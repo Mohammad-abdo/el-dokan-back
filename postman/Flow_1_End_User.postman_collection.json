@@ -1,0 +1,50 @@
+{
+  "info": {
+    "name": "Flow 1 - End User (عميل)",
+    "description": "Ad-Dukkan Mobile - فلو العميل: تسجيل، رئيسية، منتجات، سلة، طلبات، تتبع، إشعارات، ملف شخصي، وصفات، حجوزات.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://your-domain.com" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "Register", "request": { "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"username\":\"user1\",\"phone\":\"+201234567890\",\"email\":\"user@example.com\",\"password\":\"password123\"}" }, "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api","auth","register"] } } },
+        { "name": "Login", "request": { "method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"password123\"}" }, "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] } } },
+        { "name": "Me", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api","auth","me"] } } }
+      ]
+    },
+    {
+      "name": "Home & Public",
+      "item": [
+        { "name": "Home", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/home", "host": ["{{base_url}}"], "path": ["api","home"] } } },
+        { "name": "Sliders", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/sliders", "host": ["{{base_url}}"], "path": ["api","sliders"] } } },
+        { "name": "Categories", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/categories", "host": ["{{base_url}}"], "path": ["api","categories"] } } },
+        { "name": "Products", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/products", "host": ["{{base_url}}"], "path": ["api","products"] } } },
+        { "name": "Product by ID", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/products/1", "host": ["{{base_url}}"], "path": ["api","products","1"] } } }
+      ]
+    },
+    {
+      "name": "Cart & Orders",
+      "item": [
+        { "name": "Get Cart", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/cart", "host": ["{{base_url}}"], "path": ["api","cart"] } } },
+        { "name": "Add to Cart", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"product_id\":1,\"quantity\":2}" }, "url": { "raw": "{{base_url}}/api/cart/add", "host": ["{{base_url}}"], "path": ["api","cart","add"] } } },
+        { "name": "Create Order", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"shop_id\":1,\"delivery_address_id\":1,\"payment_method\":\"cash_on_delivery\"}" }, "url": { "raw": "{{base_url}}/api/orders", "host": ["{{base_url}}"], "path": ["api","orders"] } } },
+        { "name": "My Orders", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/orders", "host": ["{{base_url}}"], "path": ["api","orders"] } } },
+        { "name": "Track Order", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/orders/1/track", "host": ["{{base_url}}"], "path": ["api","orders","1","track"] } } }
+      ]
+    },
+    {
+      "name": "Profile & More",
+      "item": [
+        { "name": "Profile", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/user/profile", "host": ["{{base_url}}"], "path": ["api","user","profile"] } } },
+        { "name": "Addresses", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/addresses", "host": ["{{base_url}}"], "path": ["api","addresses"] } } },
+        { "name": "Notifications", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/notifications", "host": ["{{base_url}}"], "path": ["api","notifications"] } } },
+        { "name": "Favourites", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/favourites", "host": ["{{base_url}}"], "path": ["api","favourites"] } } }
+      ]
+    }
+  ]
+}

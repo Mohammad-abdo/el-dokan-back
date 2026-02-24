@@ -1,0 +1,984 @@
+{
+  "api_info": {
+    "name": "Eldokan Mobile API",
+    "version": "1.0.0",
+    "base_url": "https://your-domain.com/api",
+    "last_updated": "2024-01-01"
+  },
+  "authentication": {
+    "type": "Bearer Token",
+    "header": "Authorization: Bearer {token}"
+  },
+  "endpoints": {
+    "authentication": [
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/register",
+        "description": "تسجيل مستخدم جديد",
+        "auth_required": false,
+        "request_body": {
+          "username": "string (required, unique)",
+          "phone": "string (required, unique)",
+          "email": "string (optional, email)",
+          "password": "string (optional, min:6)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/register-company",
+        "description": "تسجيل شركة جديدة (حساب قيد المراجعة حتى الموافقة)",
+        "auth_required": false,
+        "request_body": {
+          "name": "string (required)",
+          "email": "string (required, unique)",
+          "password": "string (required, min:6, confirmed)",
+          "phone": "string (required)",
+          "address": "string (required)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/login",
+        "description": "تسجيل الدخول",
+        "auth_required": false,
+        "request_body": {
+          "email": "string (required)",
+          "password": "string (required)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/social-login",
+        "description": "تسجيل دخول اجتماعي",
+        "auth_required": false,
+        "request_body": {
+          "provider": "google|apple (required)",
+          "provider_id": "string (required)",
+          "email": "string (optional)",
+          "name": "string (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/verify-otp",
+        "description": "التحقق من OTP",
+        "auth_required": false,
+        "request_body": {
+          "phone": "string (required)",
+          "otp": "string (required, 6 digits)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/resend-otp",
+        "description": "إعادة إرسال OTP",
+        "auth_required": false,
+        "request_body": {
+          "phone": "string (required)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/auth/guest-login",
+        "description": "تسجيل دخول كضيف",
+        "auth_required": false
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/auth/me",
+        "description": "بيانات المستخدم الحالي",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/logout",
+        "description": "تسجيل الخروج",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/change-password",
+        "description": "تغيير كلمة المرور",
+        "auth_required": true,
+        "request_body": {
+          "current_password": "string (required)",
+          "new_password": "string (required, min:6)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/auth/login-with-link",
+        "description": "تسجيل دخول برابط وصفة",
+        "auth_required": true,
+        "request_body": {
+          "link": "string (required)",
+          "phone": "string (required)"
+        }
+      }
+    ],
+    "home_public": [
+      {
+        "method": "GET",
+        "endpoint": "/api/home",
+        "description": "بيانات الصفحة الرئيسية",
+        "auth_required": false
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/sliders",
+        "description": "قائمة السلايدرات",
+        "auth_required": false
+      }
+    ],
+    "user_profile": [
+      {
+        "method": "GET",
+        "endpoint": "/api/user/profile",
+        "description": "ملف المستخدم",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/user/profile",
+        "description": "تحديث الملف",
+        "auth_required": true,
+        "request_body": {
+          "username": "string (optional)",
+          "email": "string (optional)",
+          "phone": "string (optional)",
+          "avatar_url": "string (optional)",
+          "language_preference": "ar|en (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/user/wallet",
+        "description": "رصيد المحفظة",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/user/wallet/top-up",
+        "description": "شحن المحفظة",
+        "auth_required": true,
+        "request_body": {
+          "amount": "number (required)",
+          "payment_method": "string (required)"
+        }
+      }
+    ],
+    "addresses": [
+      {
+        "method": "GET",
+        "endpoint": "/api/addresses",
+        "description": "قائمة العناوين",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/addresses",
+        "description": "إضافة عنوان",
+        "auth_required": true,
+        "request_body": {
+          "title": "Home|Work|Other (required)",
+          "address_line_1": "string (required)",
+          "address_line_2": "string (optional)",
+          "city": "string (required)",
+          "state": "string (required)",
+          "postal_code": "string (optional)",
+          "country": "string (required)",
+          "latitude": "number (optional)",
+          "longitude": "number (optional)",
+          "is_default": "boolean (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/addresses/{id}",
+        "description": "تفاصيل عنوان",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/addresses/{id}",
+        "description": "تحديث عنوان",
+        "auth_required": true
+      },
+      {
+        "method": "DELETE",
+        "endpoint": "/api/addresses/{id}",
+        "description": "حذف عنوان",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/addresses/{id}/set-default",
+        "description": "تعيين كافتراضي",
+        "auth_required": true
+      }
+    ],
+    "shops_products": [
+      {
+        "method": "GET",
+        "endpoint": "/api/shops",
+        "description": "قائمة المتاجر",
+        "auth_required": false,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "search": "string (optional)",
+          "category_id": "number (optional)",
+          "rating": "number (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/shops/{id}",
+        "description": "تفاصيل متجر",
+        "auth_required": false
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/products",
+        "description": "قائمة المنتجات",
+        "auth_required": false,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "search": "string (optional)",
+          "category_id": "number (optional)",
+          "shop_id": "number (optional)",
+          "min_price": "number (optional)",
+          "max_price": "number (optional)",
+          "sort_by": "price_asc|price_desc|rating|newest (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/products/{id}",
+        "description": "تفاصيل منتج",
+        "auth_required": false
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/products/filter",
+        "description": "تصفية المنتجات",
+        "auth_required": false,
+        "request_body": {
+          "category_ids": "array (optional)",
+          "shop_ids": "array (optional)",
+          "min_price": "number (optional)",
+          "max_price": "number (optional)",
+          "rating": "number (optional)",
+          "is_prescription_required": "boolean (optional)",
+          "in_stock": "boolean (optional)",
+          "sort_by": "string (optional)",
+          "page": "number (optional)",
+          "per_page": "number (optional)"
+        }
+      }
+    ],
+    "categories": [
+      {
+        "method": "GET",
+        "endpoint": "/api/categories",
+        "description": "قائمة الفئات",
+        "auth_required": false
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/categories/{id}",
+        "description": "تفاصيل فئة",
+        "auth_required": false
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/subcategories",
+        "description": "قائمة الفئات الفرعية",
+        "auth_required": false,
+        "query_params": {
+          "parent_id": "number (optional)"
+        }
+      }
+    ],
+    "cart": [
+      {
+        "method": "GET",
+        "endpoint": "/api/cart",
+        "description": "محتويات السلة",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/cart/add",
+        "description": "إضافة للسلة",
+        "auth_required": true,
+        "request_body": {
+          "product_id": "number (required)",
+          "quantity": "number (required)"
+        }
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/cart/{id}",
+        "description": "تحديث عنصر",
+        "auth_required": true,
+        "request_body": {
+          "quantity": "number (required)"
+        }
+      },
+      {
+        "method": "DELETE",
+        "endpoint": "/api/cart/{id}",
+        "description": "حذف عنصر",
+        "auth_required": true
+      },
+      {
+        "method": "DELETE",
+        "endpoint": "/api/cart",
+        "description": "مسح السلة",
+        "auth_required": true
+      }
+    ],
+    "orders": [
+      {
+        "method": "GET",
+        "endpoint": "/api/orders",
+        "description": "قائمة الطلبات",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "status": "string (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/orders",
+        "description": "إنشاء طلب",
+        "auth_required": true,
+        "request_body": {
+          "address_id": "number (required)",
+          "payment_method": "credit_card|wallet|cash_on_delivery (required)",
+          "coupon_code": "string (optional)",
+          "notes": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/orders/{id}",
+        "description": "تفاصيل طلب",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/orders/{id}/track",
+        "description": "تتبع الطلب",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/orders/{id}/cancel",
+        "description": "إلغاء طلب",
+        "auth_required": true,
+        "request_body": {
+          "reason": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/orders/status/{status}",
+        "description": "طلبات حسب الحالة",
+        "auth_required": true
+      }
+    ],
+    "prescriptions": [
+      {
+        "method": "POST",
+        "endpoint": "/api/prescriptions/upload",
+        "description": "رفع وصفة طبية",
+        "auth_required": true,
+        "content_type": "multipart/form-data",
+        "request_body": {
+          "image": "file (required)",
+          "notes": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/prescriptions",
+        "description": "قائمة الوصفات",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "status": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/prescriptions/{id}",
+        "description": "تفاصيل وصفة",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/prescriptions/status/{status}",
+        "description": "وصفات حسب الحالة",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/prescriptions/link/{link}",
+        "description": "عرض وصفة برابط",
+        "auth_required": false
+      }
+    ],
+    "medication_reminders": [
+      {
+        "method": "GET",
+        "endpoint": "/api/reminders",
+        "description": "قائمة التذكيرات",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/reminders",
+        "description": "إنشاء تذكير",
+        "auth_required": true,
+        "request_body": {
+          "medication_name": "string (required)",
+          "dosage": "string (required)",
+          "frequency": "daily|weekly|custom (required)",
+          "times": "array (required)",
+          "start_date": "date (required)",
+          "end_date": "date (required)",
+          "notes": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/reminders/{id}",
+        "description": "تفاصيل تذكير",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/reminders/{id}",
+        "description": "تحديث تذكير",
+        "auth_required": true
+      },
+      {
+        "method": "DELETE",
+        "endpoint": "/api/reminders/{id}",
+        "description": "حذف تذكير",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/reminders/{id}/toggle",
+        "description": "تفعيل/تعطيل تذكير",
+        "auth_required": true
+      }
+    ],
+    "doctors": [
+      {
+        "method": "GET",
+        "endpoint": "/api/doctors",
+        "description": "قائمة الأطباء",
+        "auth_required": false,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "search": "string (optional)",
+          "specialization": "string (optional)",
+          "rating": "number (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/doctors/{id}",
+        "description": "تفاصيل طبيب",
+        "auth_required": false
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/doctors/{id}/availability",
+        "description": "أوقات التوفر",
+        "auth_required": false,
+        "query_params": {
+          "date": "date (optional, YYYY-MM-DD)"
+        }
+      }
+    ],
+    "bookings": [
+      {
+        "method": "GET",
+        "endpoint": "/api/bookings",
+        "description": "قائمة الحجوزات",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "status": "string (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/bookings",
+        "description": "إنشاء حجز",
+        "auth_required": true,
+        "request_body": {
+          "doctor_id": "number (required)",
+          "medical_center_id": "number (required)",
+          "appointment_date": "date (required, YYYY-MM-DD)",
+          "appointment_time": "time (required, HH:mm)",
+          "consultation_type": "in_person|online (required)",
+          "notes": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/bookings/{id}",
+        "description": "تفاصيل حجز",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/bookings/{id}/cancel",
+        "description": "إلغاء حجز",
+        "auth_required": true,
+        "request_body": {
+          "reason": "string (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/bookings/{id}/rate",
+        "description": "تقييم حجز",
+        "auth_required": true,
+        "request_body": {
+          "rating": "number (required, 1-5)",
+          "comment": "string (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/bookings/{id}/complaint",
+        "description": "تقديم شكوى",
+        "auth_required": true,
+        "request_body": {
+          "subject": "string (required)",
+          "message": "string (required)",
+          "type": "service|doctor|other (required)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/bookings/status/{status}",
+        "description": "حجوزات حسب الحالة",
+        "auth_required": true
+      }
+    ],
+    "delivery": [
+      {
+        "method": "GET",
+        "endpoint": "/api/deliveries/{order_id}/track",
+        "description": "تتبع التوصيل",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/deliveries/{order_id}/driver",
+        "description": "معلومات السائق",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/deliveries/{order_id}/contact-driver",
+        "description": "التواصل مع السائق",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/deliveries/{order_id}/confirm",
+        "description": "تأكيد الاستلام",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/deliveries/{order_id}/map",
+        "description": "خريطة التوصيل",
+        "auth_required": true
+      }
+    ],
+    "payment": [
+      {
+        "method": "POST",
+        "endpoint": "/api/payments/process",
+        "description": "معالجة الدفع",
+        "auth_required": true,
+        "request_body": {
+          "order_id": "number (required)",
+          "payment_method": "credit_card|wallet|cash_on_delivery (required)",
+          "card_token": "string (optional, if credit_card)",
+          "amount": "number (required)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/payments/methods",
+        "description": "طرق الدفع",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/payments/apply-discount",
+        "description": "تطبيق خصم",
+        "auth_required": true,
+        "request_body": {
+          "coupon_code": "string (required)",
+          "order_id": "number (required)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/payments/history",
+        "description": "سجل المدفوعات",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)"
+        }
+      }
+    ],
+    "notifications": [
+      {
+        "method": "GET",
+        "endpoint": "/api/notifications",
+        "description": "قائمة الإشعارات",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "type": "string (optional)",
+          "is_read": "boolean (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/notifications/unread-count",
+        "description": "عدد غير المقروءة",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/notifications/{id}/read",
+        "description": "تعليم كمقروء",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/notifications/read-all",
+        "description": "تعليم الكل كمقروء",
+        "auth_required": true
+      }
+    ],
+    "messages": [
+      {
+        "method": "GET",
+        "endpoint": "/api/messages",
+        "description": "قائمة المحادثات",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/messages/{user_id}/conversation",
+        "description": "محادثة مع مستخدم",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/messages",
+        "description": "إرسال رسالة",
+        "auth_required": true,
+        "request_body": {
+          "receiver_id": "number (required)",
+          "message": "string (required)",
+          "message_type": "text (required)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/messages/voice",
+        "description": "إرسال رسالة صوتية",
+        "auth_required": true,
+        "content_type": "multipart/form-data",
+        "request_body": {
+          "receiver_id": "number (required)",
+          "voice": "file (required)",
+          "duration": "number (optional, seconds)"
+        }
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/messages/{id}/read",
+        "description": "تعليم كمقروء",
+        "auth_required": true
+      }
+    ],
+    "favourites": [
+      {
+        "method": "GET",
+        "endpoint": "/api/favourites",
+        "description": "قائمة المفضلة",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)"
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/favourites",
+        "description": "إضافة للمفضلة",
+        "auth_required": true,
+        "request_body": {
+          "product_id": "number (required)"
+        }
+      },
+      {
+        "method": "DELETE",
+        "endpoint": "/api/favourites/{product_id}",
+        "description": "حذف من المفضلة",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/favourites/{product_id}/check",
+        "description": "التحقق من المفضلة",
+        "auth_required": true
+      }
+    ],
+    "ratings": [
+      {
+        "method": "POST",
+        "endpoint": "/api/ratings",
+        "description": "إنشاء تقييم",
+        "auth_required": true,
+        "request_body": {
+          "rateable_type": "product|shop|doctor (required)",
+          "rateable_id": "number (required)",
+          "rating": "number (required, 1-5)",
+          "comment": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/ratings",
+        "description": "قائمة التقييمات",
+        "auth_required": true,
+        "query_params": {
+          "rateable_type": "string (optional)",
+          "rateable_id": "number (optional)",
+          "page": "number (optional)",
+          "per_page": "number (optional)"
+        }
+      }
+    ],
+    "coupons": [
+      {
+        "method": "POST",
+        "endpoint": "/api/coupons/validate",
+        "description": "التحقق من كود خصم",
+        "auth_required": true,
+        "request_body": {
+          "coupon_code": "string (required)",
+          "order_id": "number (required)",
+          "total_amount": "number (required)"
+        }
+      }
+    ],
+    "settings_support": [
+      {
+        "method": "GET",
+        "endpoint": "/api/settings",
+        "description": "الإعدادات",
+        "auth_required": true
+      },
+      {
+        "method": "PUT",
+        "endpoint": "/api/settings",
+        "description": "تحديث الإعدادات",
+        "auth_required": true,
+        "request_body": {
+          "language_preference": "ar|en (optional)",
+          "notifications_enabled": "boolean (optional)",
+          "push_notifications": "boolean (optional)",
+          "email_notifications": "boolean (optional)",
+          "sms_notifications": "boolean (optional)",
+          "theme": "light|dark (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/support",
+        "description": "معلومات الدعم",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/support/tickets",
+        "description": "إنشاء تذكرة",
+        "auth_required": true,
+        "request_body": {
+          "subject": "string (required)",
+          "message": "string (required)",
+          "type": "technical|billing|general (required)",
+          "priority": "low|medium|high|urgent (required)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/support/tickets",
+        "description": "قائمة التذاكر",
+        "auth_required": true,
+        "query_params": {
+          "page": "number (optional)",
+          "per_page": "number (optional)",
+          "status": "string (optional)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/support/tickets/{id}",
+        "description": "تفاصيل تذكرة",
+        "auth_required": true
+      },
+      {
+        "method": "POST",
+        "endpoint": "/api/support/tickets/{id}/messages",
+        "description": "إضافة رسالة",
+        "auth_required": true,
+        "request_body": {
+          "message": "string (required)"
+        }
+      }
+    ],
+    "maps_locations": [
+      {
+        "method": "GET",
+        "endpoint": "/api/maps/medical-centers",
+        "description": "المراكز الطبية",
+        "auth_required": true,
+        "query_params": {
+          "latitude": "number (optional)",
+          "longitude": "number (optional)",
+          "radius": "number (optional, km, default: 10)"
+        }
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/maps/doctors/{doctor_id}/clinics",
+        "description": "عيادات طبيب",
+        "auth_required": true
+      },
+      {
+        "method": "GET",
+        "endpoint": "/api/maps/calculate-distance",
+        "description": "حساب المسافة",
+        "auth_required": true,
+        "query_params": {
+          "from_latitude": "number (required)",
+          "from_longitude": "number (required)",
+          "to_latitude": "number (required)",
+          "to_longitude": "number (required)"
+        }
+      }
+    ],
+    "driver_flow": [
+      {"method": "GET", "endpoint": "/api/driver/dashboard", "description": "داشبورد السائق", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/driver/deliveries", "description": "قائمة التوصيلات", "auth_required": true, "query_params": {"status": "optional", "filter": "optional (today)"}},
+      {"method": "GET", "endpoint": "/api/driver/available-orders", "description": "طلبات متاحة للتوصيل", "auth_required": true, "query_params": {"latitude": "optional", "longitude": "optional", "radius": "optional (km)"}},
+      {"method": "GET", "endpoint": "/api/driver/orders/{orderId}/delivery-details", "description": "تفاصيل الطلب للتوصيل", "auth_required": true},
+      {"method": "POST", "endpoint": "/api/driver/orders/{orderId}/offer", "description": "عرض سعر التوصيل", "auth_required": true, "request_body": {"delivery_price": "number (required)"}},
+      {"method": "POST", "endpoint": "/api/driver/orders/{orderId}/accept", "description": "قبول الطلب", "auth_required": true},
+      {"method": "POST", "endpoint": "/api/driver/deliveries/{deliveryId}/pickup", "description": "تأكيد استلام من المتجر", "auth_required": true},
+      {"method": "POST", "endpoint": "/api/driver/deliveries/{deliveryId}/confirm-delivery", "description": "تأكيد التسليم للعميل", "auth_required": true},
+      {"method": "PUT", "endpoint": "/api/driver/location", "description": "تحديث موقع السائق", "auth_required": true, "request_body": {"latitude": "required", "longitude": "required"}}
+    ],
+    "representative_flow": [
+      {"method": "GET", "endpoint": "/api/representative/dashboard", "description": "داشبورد المندوب", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/representative/clients", "description": "قائمة العملاء (متاجر الزيارات)", "auth_required": true, "query_params": {"search": "optional"}},
+      {"method": "GET", "endpoint": "/api/representative/orders", "description": "طلبات المتاجر المرتبطة بالمندوب", "auth_required": true, "query_params": {"status": "optional"}},
+      {"method": "GET", "endpoint": "/api/representative/orders/{id}", "description": "تفاصيل طلب", "auth_required": true},
+      {"method": "PUT", "endpoint": "/api/representative/orders/{id}/cancel", "description": "إلغاء طلب", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/representative/reports", "description": "تقارير (زيارات/طلبات/مبيعات)", "auth_required": true, "query_params": {"type": "visits|orders|sales (required)", "from_date": "required", "to_date": "required"}},
+      {"method": "GET", "endpoint": "/api/representative/visits", "description": "قائمة الزيارات", "auth_required": true},
+      {"method": "POST", "endpoint": "/api/representative/visits", "description": "إنشاء زيارة/موعد", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/representative/products", "description": "منتجات (شركة: company_products إن وُجد shop_id، وإلا منتجات ماركت)", "auth_required": true},
+      {"method": "POST", "endpoint": "/api/representative/company-orders", "description": "إنشاء طلب شركة (مندوب يبيع منتجات الشركة لمتجر/طبيب)", "auth_required": true, "request_body": {"visit_id": "optional", "customer_type": "shop|doctor (required)", "customer_id": "required", "items": [{"company_product_id": "required", "quantity": "required", "unit_price": "optional"}], "notes": "optional"}}
+    ],
+    "company_flow": [
+      {"method": "GET", "endpoint": "/api/company/dashboard", "description": "داشبورد الشركة (إحصائيات، خطة، محفظة)", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/plan", "description": "الخطة والحدود والاستخدام", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/company-products", "description": "قائمة منتجات الشركة", "auth_required": true},
+      {"method": "POST", "endpoint": "/api/company/company-products", "description": "إضافة منتج شركة", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/company-products/{id}", "description": "تفاصيل منتج شركة", "auth_required": true},
+      {"method": "PUT", "endpoint": "/api/company/company-products/{id}", "description": "تحديث منتج شركة", "auth_required": true},
+      {"method": "DELETE", "endpoint": "/api/company/company-products/{id}", "description": "حذف منتج شركة", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/company-orders", "description": "مبيعات الشركة (طلبات المندوبين)", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/company-orders/{id}", "description": "تفاصيل طلب شركة", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/representatives", "description": "قائمة المندوبين", "auth_required": true},
+      {"method": "GET", "endpoint": "/api/company/visits", "description": "الزيارات", "auth_required": true}
+    ]
+  },
+  "statistics": {
+    "total_endpoints": 127,
+    "public_endpoints": 12,
+    "protected_endpoints": 88,
+    "post_endpoints": 30,
+    "get_endpoints": 52,
+    "put_endpoints": 13,
+    "delete_endpoints": 5
+  },
+  "status_codes": {
+    "200": "Success",
+    "201": "Created",
+    "400": "Bad Request",
+    "401": "Unauthorized",
+    "403": "Forbidden",
+    "404": "Not Found",
+    "422": "Validation Error",
+    "500": "Server Error"
+  },
+  "error_format": {
+    "success": false,
+    "message": "Error message",
+    "errors": {
+      "field_name": ["Error message"]
+    }
+  },
+  "pagination_format": {
+    "data": [],
+    "meta": {
+      "current_page": 1,
+      "per_page": 15,
+      "total": 100,
+      "last_page": 7,
+      "from": 1,
+      "to": 15
+    },
+    "links": {
+      "first": "https://...",
+      "last": "https://...",
+      "prev": null,
+      "next": "https://..."
+    }
+  }
+}
+

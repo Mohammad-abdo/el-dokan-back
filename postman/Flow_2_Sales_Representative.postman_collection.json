@@ -1,0 +1,43 @@
+{
+  "info": {
+    "name": "Flow 2 - Sales Representative (مندوب مبيعات)",
+    "description": "Ad-Dukkan Mobile - فلو مندوب المبيعات: عملاء، مواعيد/زيارات، طلبات، تقارير.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://your-domain.com" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Dashboard & Clients",
+      "item": [
+        { "name": "Dashboard", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/dashboard", "host": ["{{base_url}}"], "path": ["api","representative","dashboard"] } } },
+        { "name": "Clients (قائمة العملاء)", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/clients?search=", "host": ["{{base_url}}"], "path": ["api","representative","clients"], "query": [{"key": "search", "value": ""}] } } }
+      ]
+    },
+    {
+      "name": "Visits (الزيارات/المواعيد)",
+      "item": [
+        { "name": "List Visits", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/visits", "host": ["{{base_url}}"], "path": ["api","representative","visits"] } } },
+        { "name": "Create Visit", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"shop_id\":1,\"visit_date\":\"2025-02-15\",\"visit_time\":\"10:00\",\"purpose\":\"عرض منتجات\"}" }, "url": { "raw": "{{base_url}}/api/representative/visits", "host": ["{{base_url}}"], "path": ["api","representative","visits"] } } }
+      ]
+    },
+    {
+      "name": "Orders (الطلبات)",
+      "item": [
+        { "name": "List Orders", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/orders?status=", "host": ["{{base_url}}"], "path": ["api","representative","orders"], "query": [{"key": "status", "value": ""}] } } },
+        { "name": "Order Details", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/orders/1", "host": ["{{base_url}}"], "path": ["api","representative","orders","1"] } } },
+        { "name": "Cancel Order", "request": { "method": "PUT", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/orders/1/cancel", "host": ["{{base_url}}"], "path": ["api","representative","orders","1","cancel"] } } }
+      ]
+    },
+    {
+      "name": "Reports (التقارير)",
+      "item": [
+        { "name": "Reports - Visits", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/reports?type=visits&from_date=2025-01-01&to_date=2025-02-09", "host": ["{{base_url}}"], "path": ["api","representative","reports"], "query": [{"key": "type", "value": "visits"},{"key": "from_date", "value": "2025-01-01"},{"key": "to_date", "value": "2025-02-09"}] } } },
+        { "name": "Reports - Orders", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/reports?type=orders&from_date=2025-01-01&to_date=2025-02-09", "host": ["{{base_url}}"], "path": ["api","representative","reports"], "query": [{"key": "type", "value": "orders"},{"key": "from_date", "value": "2025-01-01"},{"key": "to_date", "value": "2025-02-09"}] } } },
+        { "name": "Reports - Sales", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/representative/reports?type=sales&from_date=2025-01-01&to_date=2025-02-09", "host": ["{{base_url}}"], "path": ["api","representative","reports"], "query": [{"key": "type", "value": "sales"},{"key": "from_date", "value": "2025-01-01"},{"key": "to_date", "value": "2025-02-09"}] } } }
+      ]
+    }
+  ]
+}

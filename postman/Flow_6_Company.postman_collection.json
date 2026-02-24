@@ -1,0 +1,40 @@
+{
+  "info": {
+    "name": "Flow 6 - Company (شركة)",
+    "description": "Ad-Dukkan Mobile - فلو الشركة: نفس endpoints المتجر (داشبورد، منتجات، طلبات، عملاء، مالي). استخدم نفس token المستخدم مع /api/shop.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://your-domain.com" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Dashboard",
+      "item": [
+        { "name": "Dashboard", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/dashboard", "host": ["{{base_url}}"], "path": ["api","company","dashboard"] } } }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        { "name": "List Products", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/products", "host": ["{{base_url}}"], "path": ["api","company","products"] } } },
+        { "name": "Create Product", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"منتج شركة\",\"price\":100,\"stock_quantity\":50,\"category_id\":1}" }, "url": { "raw": "{{base_url}}/api/company/products", "host": ["{{base_url}}"], "path": ["api","company","products"] } } },
+        { "name": "Product by ID", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/products/1", "host": ["{{base_url}}"], "path": ["api","company","products","1"] } } },
+        { "name": "Update Product", "request": { "method": "PUT", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"name\":\"منتج محدث\"}" }, "url": { "raw": "{{base_url}}/api/company/products/1", "host": ["{{base_url}}"], "path": ["api","company","products","1"] } } },
+        { "name": "Delete Product", "request": { "method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/products/1", "host": ["{{base_url}}"], "path": ["api","company","products","1"] } } }
+      ]
+    },
+    {
+      "name": "Orders & Financial",
+      "item": [
+        { "name": "List Orders", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/orders", "host": ["{{base_url}}"], "path": ["api","company","orders"] } } },
+        { "name": "Order Details", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/orders/1", "host": ["{{base_url}}"], "path": ["api","company","orders","1"] } } },
+        { "name": "Update Order Status", "request": { "method": "PUT", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"status\":\"confirmed\"}" }, "url": { "raw": "{{base_url}}/api/company/orders/1/status", "host": ["{{base_url}}"], "path": ["api","company","orders","1","status"] } } },
+        { "name": "Customers", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/customers", "host": ["{{base_url}}"], "path": ["api","company","customers"] } } },
+        { "name": "Revenue", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/revenue", "host": ["{{base_url}}"], "path": ["api","company","revenue"] } } },
+        { "name": "Financial", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/company/financial", "host": ["{{base_url}}"], "path": ["api","company","financial"] } } }
+      ]
+    }
+  ]
+}

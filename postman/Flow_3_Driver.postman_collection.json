@@ -1,0 +1,43 @@
+{
+  "info": {
+    "name": "Flow 3 - Driver (مندوب التوصيل)",
+    "description": "Ad-Dukkan Mobile - فلو السائق: طلبات متاحة، تفاصيل، عرض سعر، قبول، استلام من المتجر، تأكيد التسليم، تحديث الموقع.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://your-domain.com" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Dashboard & Location",
+      "item": [
+        { "name": "Dashboard", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/dashboard", "host": ["{{base_url}}"], "path": ["api","driver","dashboard"] } } },
+        { "name": "Update Location", "request": { "method": "PUT", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"latitude\":30.0444,\"longitude\":31.2357}" }, "url": { "raw": "{{base_url}}/api/driver/location", "host": ["{{base_url}}"], "path": ["api","driver","location"] } } }
+      ]
+    },
+    {
+      "name": "Available Orders",
+      "item": [
+        { "name": "Available Orders (كل الطلبات)", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/available-orders", "host": ["{{base_url}}"], "path": ["api","driver","available-orders"] } } },
+        { "name": "Available Orders (حسب الموقع)", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/available-orders?latitude=30.0444&longitude=31.2357&radius=20", "host": ["{{base_url}}"], "path": ["api","driver","available-orders"], "query": [{"key": "latitude", "value": "30.0444"},{"key": "longitude", "value": "31.2357"},{"key": "radius", "value": "20"}] } } }
+      ]
+    },
+    {
+      "name": "Order Actions",
+      "item": [
+        { "name": "Delivery Details", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/orders/1/delivery-details", "host": ["{{base_url}}"], "path": ["api","driver","orders","1","delivery-details"] } } },
+        { "name": "Offer Delivery Price", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"delivery_price\":25.00}" }, "url": { "raw": "{{base_url}}/api/driver/orders/1/offer", "host": ["{{base_url}}"], "path": ["api","driver","orders","1","offer"] } } },
+        { "name": "Accept Order", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/orders/1/accept", "host": ["{{base_url}}"], "path": ["api","driver","orders","1","accept"] } } }
+      ]
+    },
+    {
+      "name": "Delivery Flow",
+      "item": [
+        { "name": "My Deliveries", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/deliveries", "host": ["{{base_url}}"], "path": ["api","driver","deliveries"] } } },
+        { "name": "Confirm Pickup (تم استلام الطلب)", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/driver/deliveries/1/pickup", "host": ["{{base_url}}"], "path": ["api","driver","deliveries","1","pickup"] } } },
+        { "name": "Confirm Delivery (تأكيد التسليم)", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{}" }, "url": { "raw": "{{base_url}}/api/driver/deliveries/1/confirm-delivery", "host": ["{{base_url}}"], "path": ["api","driver","deliveries","1","confirm-delivery"] } } }
+      ]
+    }
+  ]
+}

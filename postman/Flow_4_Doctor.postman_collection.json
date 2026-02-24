@@ -1,0 +1,46 @@
+{
+  "info": {
+    "name": "Flow 4 - Doctor (طبيب)",
+    "description": "Ad-Dukkan Mobile - فلو الطبيب: داشبورد، حجوزات، مرضى، وصفات، محادثات، تقارير، محفظة.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://your-domain.com" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Dashboard & Bookings",
+      "item": [
+        { "name": "Dashboard", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/dashboard", "host": ["{{base_url}}"], "path": ["api","doctor","dashboard"] } } },
+        { "name": "Bookings", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/bookings", "host": ["{{base_url}}"], "path": ["api","doctor","bookings"] } } },
+        { "name": "Patients", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/patients", "host": ["{{base_url}}"], "path": ["api","doctor","patients"] } } }
+      ]
+    },
+    {
+      "name": "Prescriptions",
+      "item": [
+        { "name": "List Prescriptions", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/prescriptions", "host": ["{{base_url}}"], "path": ["api","doctor","prescriptions"] } } },
+        { "name": "Prescription by ID", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/prescriptions/1", "host": ["{{base_url}}"], "path": ["api","doctor","prescriptions","1"] } } },
+        { "name": "Share Prescription", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/prescriptions/1/share", "host": ["{{base_url}}"], "path": ["api","doctor","prescriptions","1","share"] } } }
+      ]
+    },
+    {
+      "name": "Wallet & Reports",
+      "item": [
+        { "name": "Wallet", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/wallet", "host": ["{{base_url}}"], "path": ["api","doctor","wallet"] } } },
+        { "name": "Wallet Transactions", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/wallet/transactions", "host": ["{{base_url}}"], "path": ["api","doctor","wallet","transactions"] } } },
+        { "name": "Reports - Prescriptions", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/reports/prescriptions", "host": ["{{base_url}}"], "path": ["api","doctor","reports","prescriptions"] } } },
+        { "name": "Reports - Patients", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/reports/patients", "host": ["{{base_url}}"], "path": ["api","doctor","reports","patients"] } } }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        { "name": "Conversations", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/chat/conversations", "host": ["{{base_url}}"], "path": ["api","doctor","chat","conversations"] } } },
+        { "name": "Conversation with Patient", "request": { "method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{token}}"}], "url": { "raw": "{{base_url}}/api/doctor/chat/1/conversation", "host": ["{{base_url}}"], "path": ["api","doctor","chat","1","conversation"] } } },
+        { "name": "Send Message", "request": { "method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{token}}"},{"key": "Content-Type", "value": "application/json"}], "body": { "mode": "raw", "raw": "{\"message\":\"مرحباً\"}" }, "url": { "raw": "{{base_url}}/api/doctor/chat/1/send", "host": ["{{base_url}}"], "path": ["api","doctor","chat","1","send"] } } }
+      ]
+    }
+  ]
+}
