@@ -16,7 +16,7 @@
     <div class="stats">
         <div class="stat-card">
             <div class="stat-number">50+</div>
-            <div>متجر نشط</div>
+            <div>متجرgfhfhfh نشط</div>
         </div>
         <div class="stat-card">
             <div class="stat-number">500+</div>
