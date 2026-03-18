@@ -281,6 +281,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::apiResource('sliders', \App\Http\Controllers\Admin\AdminSliderController::class);
 
     // Doctors Management
+    Route::post('/doctors/reports/generate', [\App\Http\Controllers\Admin\AdminDoctorReportController::class, 'generate']);
     Route::apiResource('doctors', \App\Http\Controllers\Admin\AdminDoctorController::class);
     Route::get('/doctors/{doctor}/bookings', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'bookings']);
     Route::get('/doctors/{doctor}/prescriptions', [\App\Http\Controllers\Admin\AdminDoctorController::class, 'prescriptions']);
