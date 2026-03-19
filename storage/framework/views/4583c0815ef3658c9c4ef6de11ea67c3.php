@@ -1,16 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
+    <?php use Illuminate\Support\Str; ?>
     <meta charset="UTF-8">
     <title>Doctor Report — <?php echo e($report['doctor']['name'] ?? 'Doctor'); ?></title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            direction: rtl;
+            unicode-bidi: bidi-override; /* Helps Arabic layout/ordering in dompdf */
+        }
         body {
             font-family: 'DejaVu Sans', Arial, sans-serif;
             font-size: 12px;
             color: #1a202c;
             background: #ffffff;
             line-height: 1.5;
+        }
+        table, th, td {
+            direction: rtl;
+            text-align: right;
         }
 
         /* ── Header ── */
