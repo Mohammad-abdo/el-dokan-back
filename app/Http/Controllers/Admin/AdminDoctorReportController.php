@@ -7,6 +7,7 @@ use App\Models\Doctor;
 use App\Services\DoctorReportService;
 use App\Exports\DoctorReportExport;
 use Barryvdh\DomPDF\Facade\Pdf;
+use ArPHP\I18N\Arabic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -68,6 +69,10 @@ class AdminDoctorReportController extends Controller
 
     private function pdfResponse(array $report, Doctor $doctor): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\Response
     {
+        // DomPDF doesn't always apply Arabic shaping (ligatures). Ar-PHP converts Arabic
+        // into glyph-joined UTF-8 so letters become connected in the PDF.
+        $report = $this->reshapeArabicForPdf($report);
+
         $pdf = Pdf::loadView('reports.doctor-report', ['report' => $report])
             ->setPaper('a4', 'portrait')
             ->setOptions([
@@ -80,6 +85,33 @@ class AdminDoctorReportController extends Controller
         $filename   = "doctor-report-{$doctorName}-{$report['period']['from']}-to-{$report['period']['to']}.pdf";
 
         return $pdf->download($filename);
+    }
+
+    private function reshapeArabicForPdf(mixed $value): mixed
+    {
+        $arabic = new Arabic();
+
+        $transform = function (mixed $v) use (&$transform, $arabic): mixed {
+            if (is_string($v)) {
+                // Shape only Arabic text to avoid breaking English/numbers.
+                try {
+                    return $arabic->isArabic($v) ? $arabic->utf8Glyphs($v, 50, true, true) : $v;
+                } catch (\Throwable $e) {
+                    return $v;
+                }
+            }
+
+            if (is_array($v)) {
+                foreach ($v as $k => $item) {
+                    $v[$k] = $transform($item);
+                }
+                return $v;
+            }
+
+            return $v;
+        };
+
+        return $transform($value);
     }
 
     private function excelResponse(array $report, Doctor $doctor): \Symfony\Component\HttpFoundation\BinaryFileResponse

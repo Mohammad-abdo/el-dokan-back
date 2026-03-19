@@ -9,6 +9,7 @@
         "barryvdh/laravel-dompdf": "*",
         "guzzlehttp/guzzle": "^7.2",
         "intervention/image": "^2.7",
+        "khaled.alshamaa/ar-php": "^7.0",
         "laravel/framework": "^10.10",
         "laravel/reverb": "^1.7",
         "laravel/sanctum": "^3.2",
