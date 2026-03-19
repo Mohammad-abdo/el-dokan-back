@@ -16,7 +16,7 @@
     <div class="stats">
         <div class="stat-card">
             <div class="stat-number">50+</div>
-            <div>متجر نشط</div>
+            <div>متجرgfhfhfh نشط</div>
         </div>
         <div class="stat-card">
             <div class="stat-number">500+</div>
@@ -149,4 +149,4 @@
 
 
 
-<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\mohamed abdo_jop\Eldokan\backend\resources\views/welcome.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH D:\dokan\back\resources\views/welcome.blade.php ENDPATH**/ ?>

@@ -243,4 +243,4 @@
 
 
 
-<?php /**PATH D:\mohamed abdo_jop\Eldokan\backend\resources\views/layouts/app.blade.php ENDPATH**/ ?>
+<?php /**PATH D:\dokan\back\resources\views/layouts/app.blade.php ENDPATH**/ ?>
