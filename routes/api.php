@@ -357,6 +357,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::get('/reports/companies', [\App\Http\Controllers\Admin\AdminReportController::class, 'companiesReport']);
     Route::get('/reports/{type}/export', [\App\Http\Controllers\Admin\AdminReportController::class, 'export']);
 
+    // Full Data Export (RAW DATA + PDF via Puppeteer)
+    Route::get('/export', [\App\Http\Controllers\Admin\AdminExportController::class, 'data']);
+    Route::get('/export/pdf', [\App\Http\Controllers\Admin\AdminExportController::class, 'exportPdf']);
+
     // Doctor Wallet Management
     Route::get('/doctors/{doctor}/wallet', [\App\Http\Controllers\Admin\AdminDoctorWalletController::class, 'show']);
     Route::get('/doctors/{doctor}/wallet/transactions', [\App\Http\Controllers\Admin\AdminDoctorWalletController::class, 'transactions']);
