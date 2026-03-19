@@ -41,6 +41,9 @@ class CompanyProduct extends Model
         'sort_order' => 'integer',
     ];
 
+    // Expose this accessor inside toArray()/JSON for easier PDF/Excel rendering.
+    protected $appends = ['first_image_url'];
+
     public function shop()
     {
         return $this->belongsTo(Shop::class);

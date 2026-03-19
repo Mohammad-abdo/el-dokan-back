@@ -210,10 +210,10 @@
         <div class="section">
             <div class="section-header">
                 <span class="section-title">Products &amp; Sales</span>
-                <span class="section-count">{{ count($pblock['products'] ?? []) }} items</span>
+                <span class="section-count">{{ count($pblock['items'] ?? []) }} rows</span>
             </div>
             <div class="section-body">
-                @if(!empty($pblock['products']))
+                @if(!empty($pblock['items']))
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -221,12 +221,22 @@
                                 <th>Image</th>
                                 <th>Product</th>
                                 <th>Category</th>
-                                <th>Qty Sold</th>
-                                <th>Total Revenue</th>
+                                <th>Order #</th>
+                                <th>Order Date</th>
+                                <th>Order Status</th>
+                                <th>Payment Method</th>
+                                <th>Payment Status</th>
+                                <th>Discount</th>
+                                <th>Delivery Fee</th>
+                                <th>Delivery Address ID</th>
+                                <th>Customer</th>
+                                <th>Qty</th>
+                                <th>Unit Price</th>
+                                <th>Total Price</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach(($pblock['products'] ?? []) as $i => $p)
+                            @foreach(($pblock['items'] ?? []) as $i => $p)
                                 <tr>
                                     <td>{{ $i + 1 }}</td>
                                     <td>
@@ -238,14 +248,27 @@
                                     </td>
                                     <td>{{ $p['product_name'] ?? ($p['product_name_ar'] ?? '-') }}</td>
                                     <td>{{ $p['category'] ?? '-' }}</td>
-                                    <td>{{ $p['total_quantity_sold'] ?? 0 }}</td>
-                                    <td>{{ number_format($p['total_revenue'] ?? 0, 2) }}</td>
+                                    <td>{{ $p['order_number'] ?? '-' }}</td>
+                                    <td>{{ $p['order_created_at'] ?? '-' }}</td>
+                                    <td><span class="badge badge-gray">{{ ucfirst($p['order_status'] ?? '-') }}</span></td>
+                                    <td>{{ $p['payment_method'] ?? '-' }}</td>
+                                    <td>{{ $p['payment_status'] ?? '-' }}</td>
+                                    <td>{{ number_format($p['discount_amount'] ?? 0, 2) }}</td>
+                                    <td>{{ number_format($p['delivery_fee'] ?? 0, 2) }}</td>
+                                    <td>{{ $p['delivery_address_id'] ?? '-' }}</td>
+                                    <td>
+                                        {{ $p['customer_name'] ?? '-' }}
+                                        @if(!empty($p['customer_phone']))<br><span style="color:#64748b; font-size:9px;">{{ $p['customer_phone'] }}</span>@endif
+                                    </td>
+                                    <td>{{ $p['quantity'] ?? 0 }}</td>
+                                    <td>{{ number_format($p['unit_price'] ?? 0, 2) }}</td>
+                                    <td>{{ number_format($p['total_price'] ?? 0, 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 @else
-                    <p class="no-data">No products found for this period.</p>
+                    <p class="no-data">No products/order items found for this period.</p>
                 @endif
             </div>
         </div>
@@ -287,8 +310,11 @@
                                 <th>Amount</th>
                                 <th>Commission</th>
                                 <th>Status</th>
-                                <th>Reference</th>
-                                <th>Date</th>
+                                <th>Order / Ref</th>
+                                <th>User ID</th>
+                                <th>Description</th>
+                                <th>Admin User</th>
+                                <th>Created At</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -308,8 +334,11 @@
                                     <td>{{ number_format($t['amount'] ?? 0, 2) }}</td>
                                     <td>{{ $t['commission'] ?? '-' }}</td>
                                     <td><span class="badge {{ $badge }}">{{ ucfirst($t['status'] ?? '-') }}</span></td>
-                                    <td>{{ $t['order_number'] ?? ($t['description'] ?? '-') }}</td>
-                                    <td>{{ isset($t['created_at']) ? \Carbon\Carbon::parse($t['created_at'])->format('M d, Y') : '-' }}</td>
+                                    <td>{{ $t['order_number'] ?? ($t['order_id'] ?? ($t['description'] ?? '-')) }}</td>
+                                    <td>{{ $t['user_id'] ?? '-' }}</td>
+                                    <td>{{ Str::limit($t['description'] ?? '-', 60) }}</td>
+                                    <td>{{ $t['admin_user_id'] ?? '-' }}</td>
+                                    <td>{{ isset($t['created_at']) ? \Carbon\Carbon::parse($t['created_at'])->format('M d, Y H:i') : '-' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -338,7 +367,10 @@
                             <th>Status</th>
                             <th>Ordered At</th>
                             <th>Representative</th>
+                            <th>Customer Type</th>
                             <th>Customer</th>
+                            <th>Visit</th>
+                            <th>Notes</th>
                             <th>Total Amount</th>
                             <th>Items</th>
                         </tr>
@@ -354,7 +386,11 @@
                                     default => 'badge-gray',
                                 };
                                 $repName = $o['representative']['user']['username'] ?? ($o['representative']['user']['name'] ?? '-');
+                                $customerType = $o['customer_type'] ?? '-';
                                 $customerName = $o['customerShop']['name'] ?? ($o['customerDoctor']['name'] ?? ($o['customer_id'] ?? '-'));
+                                $visitDate = $o['visit']['visit_date'] ?? null;
+                                $visitTime = $o['visit']['visit_time'] ?? null;
+                                $visitDoctorConfirmed = !empty($o['visit']['doctor_confirmed_at']);
                             @endphp
                             <tr>
                                 <td>{{ $i + 1 }}</td>
@@ -362,10 +398,73 @@
                                 <td><span class="badge {{ $badge }}">{{ ucfirst($st ?: '-') }}</span></td>
                                 <td>{{ isset($o['ordered_at']) ? \Carbon\Carbon::parse($o['ordered_at'])->format('M d, Y') : '-' }}</td>
                                 <td>{{ $repName }}</td>
-                                <td>{{ $customerName }}</td>
+                                <td>{{ $customerType }}</td>
+                                <td>
+                                    {{ $customerName }}
+                                    @if(!empty($o['customerShop']['phone']))<br><span style="color:#64748b; font-size:9px;">{{ $o['customerShop']['phone'] }}</span>@endif
+                                </td>
+                                <td>
+                                    @if(!empty($o['visit']))
+                                        {{ $visitDate ? \Carbon\Carbon::parse($visitDate)->format('M d, Y') : '-' }}
+                                        @if(!empty($visitTime))<br><span style="color:#64748b; font-size:9px;">{{ $visitTime }}</span>@endif
+                                        @if(!empty($o['visit']['doctor_confirmed_at']))
+                                            <br><span style="color:#059669; font-size:9px;">Confirmed</span>
+                                        @else
+                                            <br><span style="color:#64748b; font-size:9px;">Not confirmed</span>
+                                        @endif
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>{{ Str::limit($o['notes'] ?? '-', 60) }}</td>
                                 <td>{{ number_format($o['total_amount'] ?? 0, 2) }}</td>
                                 <td>{{ count($o['items'] ?? []) }}</td>
                             </tr>
+                            @if(!empty($o['items']))
+                                <tr>
+                                    <td></td>
+                                    <td colspan="10">
+                                        <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">SKU</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Product</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Qty</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Unit Price</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Total</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Image</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach(($o['items'] ?? []) as $item)
+                                                    @php
+                                                        $cp = $item['companyProduct'] ?? [];
+                                                        $img = $cp['first_image_url'] ?? null;
+                                                    @endphp
+                                                    <tr>
+                                                        <td style="padding:3px 6px;">{{ $cp['sku'] ?? '-' }}</td>
+                                                        <td style="padding:3px 6px;">
+                                                            {{ $cp['name'] ?? ($cp['name_ar'] ?? '-') }}
+                                                        </td>
+                                                        <td style="padding:3px 6px;">{{ $item['quantity'] ?? 0 }}</td>
+                                                        <td style="padding:3px 6px;">{{ number_format($item['unit_price'] ?? 0, 2) }}</td>
+                                                        <td style="padding:3px 6px;">{{ number_format($item['total_price'] ?? 0, 2) }}</td>
+                                                        <td style="padding:3px 6px;">
+                                                            @if(!empty($img))
+                                                                <img class="img-thumb" style="width:30px; height:30px;" src="{{ $img }}" />
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                        <td style="padding:3px 6px;">{{ $cp['product_type'] ?? '-' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>
@@ -393,6 +492,9 @@
                             <th>Purpose</th>
                             <th>Status</th>
                             <th>Confirmed</th>
+                            <th>Notes</th>
+                            <th>Rejection Reason</th>
+                            <th>Files</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -416,6 +518,12 @@
                                 <td>{{ Str::limit($v['purpose'] ?? '-', 40) }}</td>
                                 <td><span class="badge {{ $badge }}">{{ ucfirst($st ?: '-') }}</span></td>
                                 <td>{{ !empty($v['doctor_confirmed_at']) ? '&#10003;' : '&mdash;' }}</td>
+                                <td>{{ Str::limit($v['notes'] ?? ($v['rejection_reason'] ?? '-'), 60) }}</td>
+                                <td>{{ Str::limit($v['rejection_reason'] ?? '-', 60) }}</td>
+                                <td>
+                                    @php $files = $v['files'] ?? []; @endphp
+                                    {{ is_array($files) ? count($files) : 0 }}
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -483,6 +591,8 @@
                             <th>Representative</th>
                             <th>Customer Type</th>
                             <th>Customer</th>
+                            <th>Visit</th>
+                            <th>Notes</th>
                             <th>Total Amount</th>
                             <th>Items</th>
                         </tr>
@@ -499,6 +609,8 @@
                                 };
                                 $repName = $o['representative']['user']['username'] ?? ($o['representative']['user']['name'] ?? '-');
                                 $customerName = $o['customerShop']['name'] ?? ($o['customerDoctor']['name'] ?? ($o['customer_id'] ?? '-'));
+                                $visitDate = $o['visit']['visit_date'] ?? null;
+                                $visitTime = $o['visit']['visit_time'] ?? null;
                             @endphp
                             <tr>
                                 <td>{{ $i + 1 }}</td>
@@ -508,9 +620,63 @@
                                 <td>{{ $repName }}</td>
                                 <td>{{ $o['customer_type'] ?? '-' }}</td>
                                 <td>{{ $customerName }}</td>
+                                <td>
+                                    @if(!empty($o['visit']))
+                                        {{ $visitDate ? \Carbon\Carbon::parse($visitDate)->format('M d, Y') : '-' }}
+                                        @if(!empty($visitTime))<br><span style="color:#64748b; font-size:9px;">{{ $visitTime }}</span>@endif
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>{{ Str::limit($o['notes'] ?? '-', 60) }}</td>
                                 <td>{{ number_format($o['total_amount'] ?? 0, 2) }}</td>
                                 <td>{{ count($o['items'] ?? []) }}</td>
                             </tr>
+                            @if(!empty($o['items']))
+                                <tr>
+                                    <td></td>
+                                    <td colspan="10">
+                                        <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">SKU</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Product</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Qty</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Unit Price</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Total</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Image</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach(($o['items'] ?? []) as $item)
+                                                    @php
+                                                        $cp = $item['companyProduct'] ?? [];
+                                                        $img = $cp['first_image_url'] ?? null;
+                                                    @endphp
+                                                    <tr>
+                                                        <td style="padding:3px 6px;">{{ $cp['sku'] ?? '-' }}</td>
+                                                        <td style="padding:3px 6px;">
+                                                            {{ $cp['name'] ?? ($cp['name_ar'] ?? '-') }}
+                                                        </td>
+                                                        <td style="padding:3px 6px;">{{ $item['quantity'] ?? 0 }}</td>
+                                                        <td style="padding:3px 6px;">{{ number_format($item['unit_price'] ?? 0, 2) }}</td>
+                                                        <td style="padding:3px 6px;">{{ number_format($item['total_price'] ?? 0, 2) }}</td>
+                                                        <td style="padding:3px 6px;">
+                                                            @if(!empty($img))
+                                                                <img class="img-thumb" style="width:30px; height:30px;" src="{{ $img }}" />
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                        <td style="padding:3px 6px;">{{ $cp['product_type'] ?? '-' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

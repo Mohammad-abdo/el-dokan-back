@@ -55,15 +55,46 @@ class ShopReportExport implements FromArray
                 $addKeyValueTable($totals);
                 $rows[] = [];
             }
-            $products = $productsBlock['products'] ?? [];
-            $rows[] = ['#', 'Product Name', 'Category', 'Quantity Sold', 'Total Revenue', 'First Image URL'];
-            foreach ($products as $i => $p) {
+            $items = $productsBlock['items'] ?? [];
+            $rows[] = [
+                '#',
+                'Order #',
+                'Order Date',
+                'Order Status',
+                'Payment Method',
+                'Payment Status',
+                'Discount Amount',
+                'Delivery Fee',
+                'Delivery Address ID',
+                'Customer',
+                'Customer Phone',
+                'Customer Email',
+                'Product Name',
+                'Category',
+                'Qty',
+                'Unit Price',
+                'Total Price',
+                'First Image URL',
+            ];
+            foreach ($items as $i => $p) {
                 $rows[] = [
                     $i + 1,
+                    $p['order_number'] ?? '-',
+                    $p['order_created_at'] ?? '-',
+                    $p['order_status'] ?? '-',
+                    $p['payment_method'] ?? '-',
+                    $p['payment_status'] ?? '-',
+                    $p['discount_amount'] ?? 0,
+                    $p['delivery_fee'] ?? 0,
+                    $p['delivery_address_id'] ?? '',
+                    $p['customer_name'] ?? '-',
+                    $p['customer_phone'] ?? '',
+                    $p['customer_email'] ?? '',
                     $p['product_name'] ?? ($p['product_name_ar'] ?? '-'),
                     $p['category'] ?? '-',
-                    $p['total_quantity_sold'] ?? 0,
-                    $p['total_revenue'] ?? 0,
+                    $p['quantity'] ?? 0,
+                    $p['unit_price'] ?? 0,
+                    $p['total_price'] ?? 0,
                     $p['first_image_url'] ?? null,
                 ];
             }
@@ -92,10 +123,9 @@ class ShopReportExport implements FromArray
                 $rows[] = [];
             }
 
-            $rows[] = ['#', 'Source', 'Type', 'Amount', 'Commission', 'Status', 'Reference', 'Created At'];
+            $rows[] = ['#', 'Source', 'Type', 'Amount', 'Commission', 'Status', 'Order ID', 'Order Number', 'User ID', 'Description', 'Admin User ID', 'Created At'];
             $transactions = $wallet['transactions'] ?? [];
             foreach ($transactions as $i => $t) {
-                $reference = $t['order_number'] ?? ($t['order_id'] ?? ($t['description'] ?? '-'));
                 $rows[] = [
                     $i + 1,
                     $t['source'] ?? '-',
@@ -103,32 +133,97 @@ class ShopReportExport implements FromArray
                     $t['amount'] ?? 0,
                     $t['commission'] ?? '',
                     $t['status'] ?? '',
-                    $reference,
+                    $t['order_id'] ?? '',
+                    $t['order_number'] ?? '',
+                    $t['user_id'] ?? '',
+                    $t['description'] ?? '',
+                    $t['admin_user_id'] ?? '',
                     $t['created_at'] ?? '',
                 ];
             }
             $rows[] = [];
         }
 
-        // Orders from reps (customers = this shop)
+        // Orders from reps (customers = this shop) - output one row per item
         $ordersFromReps = $sections['ordersFromReps']['orders'] ?? null;
         if (is_array($ordersFromReps)) {
             $addSectionTitle('Orders From Reps (To This Shop)');
-            $rows[] = ['#', 'Order #', 'Status', 'Ordered At', 'Representative', 'Customer', 'Total Amount', 'Items Count'];
+            $rows[] = [
+                '#',
+                'Order #',
+                'Status',
+                'Ordered At',
+                'Representative',
+                'Customer Type',
+                'Customer',
+                'Visit Date',
+                'Doctor Confirmed At',
+                'Order Notes',
+                'Item SKU',
+                'Item Product',
+                'Item Type',
+                'Qty',
+                'Unit Price',
+                'Total Price',
+                'Item Image',
+            ];
+
+            $rowIndex = 0;
             foreach ($ordersFromReps as $i => $o) {
+                $items = is_array($o['items'] ?? null) ? ($o['items'] ?? []) : [];
+
                 $customerName =
                     $o['customerShop']['name'] ?? ($o['customerDoctor']['name'] ?? ($o['customer_id'] ?? '-'));
                 $repName = $o['representative']['user']['username'] ?? ($o['representative']['user']['name'] ?? '-');
-                $rows[] = [
-                    $i + 1,
-                    $o['order_number'] ?? $o['id'] ?? '-',
-                    $o['status'] ?? '-',
-                    $o['ordered_at'] ?? '',
-                    $repName,
-                    $customerName,
-                    $o['total_amount'] ?? 0,
-                    is_array($o['items'] ?? null) ? count($o['items']) : 0,
-                ];
+                $visit = $o['visit'] ?? [];
+
+                if (empty($items)) {
+                    $rowIndex++;
+                    $rows[] = [
+                        $rowIndex,
+                        $o['order_number'] ?? $o['id'] ?? '-',
+                        $o['status'] ?? '-',
+                        $o['ordered_at'] ?? '',
+                        $repName,
+                        $o['customer_type'] ?? '-',
+                        $customerName,
+                        $visit['visit_date'] ?? '',
+                        $visit['doctor_confirmed_at'] ?? '',
+                        $o['notes'] ?? '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                    ];
+                    continue;
+                }
+
+                foreach ($items as $item) {
+                    $rowIndex++;
+                    $cp = $item['companyProduct'] ?? [];
+                    $rows[] = [
+                        $rowIndex,
+                        $o['order_number'] ?? $o['id'] ?? '-',
+                        $o['status'] ?? '-',
+                        $o['ordered_at'] ?? '',
+                        $repName,
+                        $o['customer_type'] ?? '-',
+                        $customerName,
+                        $visit['visit_date'] ?? '',
+                        $visit['doctor_confirmed_at'] ?? '',
+                        $o['notes'] ?? '',
+                        $cp['sku'] ?? '-',
+                        $cp['name'] ?? ($cp['name_ar'] ?? '-'),
+                        $cp['product_type'] ?? '-',
+                        $item['quantity'] ?? 0,
+                        $item['unit_price'] ?? 0,
+                        $item['total_price'] ?? 0,
+                        $cp['first_image_url'] ?? '',
+                    ];
+                }
             }
             $rows[] = [];
         }
@@ -137,7 +232,7 @@ class ShopReportExport implements FromArray
         if (!empty($sections['visits'])) {
             $addSectionTitle('Visits');
             $visits = $sections['visits']['visits'] ?? [];
-            $rows[] = ['#', 'Representative', 'Phone', 'Visit Date', 'Time', 'Purpose', 'Status', 'Doctor Confirmed At', 'Notes'];
+            $rows[] = ['#', 'Representative', 'Phone', 'Visit Date', 'Time', 'Purpose', 'Status', 'Doctor Confirmed At', 'Notes', 'Rejection Reason', 'Files Count'];
             foreach ($visits as $i => $v) {
                 $rep = $v['representative']['user'] ?? [];
                 $rows[] = [
@@ -150,6 +245,8 @@ class ShopReportExport implements FromArray
                     $v['status'] ?? '-',
                     $v['doctor_confirmed_at'] ?? '',
                     $v['notes'] ?? ($v['rejection_reason'] ?? ''),
+                    $v['rejection_reason'] ?? '',
+                    is_array($v['files'] ?? null) ? count($v['files']) : 0,
                 ];
             }
             $rows[] = [];
@@ -178,22 +275,81 @@ class ShopReportExport implements FromArray
         $companyOrders = $sections['companyOrders']['orders'] ?? null;
         if (is_array($companyOrders)) {
             $addSectionTitle('Company Orders');
-            $rows[] = ['#', 'Order #', 'Status', 'Ordered At', 'Representative', 'Customer Type', 'Customer', 'Total Amount', 'Items Count'];
+            $rows[] = [
+                '#',
+                'Order #',
+                'Status',
+                'Ordered At',
+                'Representative',
+                'Customer Type',
+                'Customer',
+                'Visit Date',
+                'Doctor Confirmed At',
+                'Order Notes',
+                'Item SKU',
+                'Item Product',
+                'Item Type',
+                'Qty',
+                'Unit Price',
+                'Total Price',
+                'Item Image',
+            ];
+
+            $rowIndex = 0;
             foreach ($companyOrders as $i => $o) {
+                $items = is_array($o['items'] ?? null) ? ($o['items'] ?? []) : [];
                 $customerName =
                     $o['customerShop']['name'] ?? ($o['customerDoctor']['name'] ?? ($o['customer_id'] ?? '-'));
                 $repName = $o['representative']['user']['username'] ?? ($o['representative']['user']['name'] ?? '-');
-                $rows[] = [
-                    $i + 1,
-                    $o['order_number'] ?? $o['id'] ?? '-',
-                    $o['status'] ?? '-',
-                    $o['ordered_at'] ?? '',
-                    $repName,
-                    $o['customer_type'] ?? '-',
-                    $customerName,
-                    $o['total_amount'] ?? 0,
-                    is_array($o['items'] ?? null) ? count($o['items']) : 0,
-                ];
+                $visit = $o['visit'] ?? [];
+
+                if (empty($items)) {
+                    $rowIndex++;
+                    $rows[] = [
+                        $rowIndex,
+                        $o['order_number'] ?? $o['id'] ?? '-',
+                        $o['status'] ?? '-',
+                        $o['ordered_at'] ?? '',
+                        $repName,
+                        $o['customer_type'] ?? '-',
+                        $customerName,
+                        $visit['visit_date'] ?? '',
+                        $visit['doctor_confirmed_at'] ?? '',
+                        $o['notes'] ?? '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                    ];
+                    continue;
+                }
+
+                foreach ($items as $item) {
+                    $rowIndex++;
+                    $cp = $item['companyProduct'] ?? [];
+                    $rows[] = [
+                        $rowIndex,
+                        $o['order_number'] ?? $o['id'] ?? '-',
+                        $o['status'] ?? '-',
+                        $o['ordered_at'] ?? '',
+                        $repName,
+                        $o['customer_type'] ?? '-',
+                        $customerName,
+                        $visit['visit_date'] ?? '',
+                        $visit['doctor_confirmed_at'] ?? '',
+                        $o['notes'] ?? '',
+                        $cp['sku'] ?? '-',
+                        $cp['name'] ?? ($cp['name_ar'] ?? '-'),
+                        $cp['product_type'] ?? '-',
+                        $item['quantity'] ?? 0,
+                        $item['unit_price'] ?? 0,
+                        $item['total_price'] ?? 0,
+                        $cp['first_image_url'] ?? '',
+                    ];
+                }
             }
             $rows[] = [];
         }

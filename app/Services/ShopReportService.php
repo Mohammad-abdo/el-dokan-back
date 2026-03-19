@@ -190,54 +190,80 @@ class ShopReportService
 
     private function getProducts(Shop $shop, Carbon $fromDt, Carbon $toDt): array
     {
-        $orderIds = $shop->orders()
+        $orders = $shop->orders()
             ->whereBetween('created_at', [$fromDt, $toDt])
-            ->pluck('id');
+            ->select(['id', 'order_number', 'user_id', 'status', 'created_at'])
+            ->with(['user'])
+            ->get();
 
-        if ($orderIds->isEmpty()) {
+        $orderIds = $orders->pluck('id')->filter()->values()->all();
+
+        if (empty($orderIds)) {
             return [
                 'period' => [
                     'from' => $fromDt->toDateString(),
                     'to' => $toDt->toDateString(),
                 ],
                 'totals' => [
+                    // keeping old keys for backward compatibility
                     'products_count' => 0,
                     'total_quantity_sold' => 0,
                     'total_revenue' => 0,
                 ],
+                'items' => [],
                 'products' => [],
             ];
         }
 
+        // Full row-level data: one row per order item.
         $items = OrderItem::whereIn('order_id', $orderIds)
-            ->with('product.category', 'product.subcategory')
-            ->selectRaw('product_id, sum(quantity) as total_quantity, sum(total_price) as total_revenue')
-            ->groupBy('product_id')
+            ->with(['product.category', 'product.subcategory', 'order.user'])
+            ->select(['id', 'order_id', 'product_id', 'quantity', 'unit_price', 'total_price'])
+            ->latest('id')
             ->get();
 
-        $productIds = $items->pluck('product_id')->filter()->unique()->values()->all();
-        $products = Product::with(['category', 'subcategory'])
-            ->whereIn('id', $productIds)
-            ->get()
-            ->keyBy('id');
-
-        $report = $items->map(function ($row) use ($products) {
-            $product = $products->get($row->product_id);
+        $rows = $items->map(function (OrderItem $item) {
+            $product = $item->product;
+            $order = $item->order;
+            $user = $order?->user;
 
             return [
-                'product_id' => $row->product_id,
+                'order_item_id' => $item->id,
+                'order_id' => $item->order_id,
+                'order_number' => $order?->order_number,
+                'order_created_at' => $order?->created_at?->toDateString(),
+                'order_status' => $order?->status,
+                'customer_id' => $order?->user_id,
+                'customer_name' => $user?->username ?? ($user?->name ?? null),
+                'customer_phone' => $user?->phone ?? null,
+                'customer_email' => $user?->email ?? null,
+
+                // Order-level fields (needed to show "all data" in report).
+                'payment_method' => $order?->payment_method,
+                'payment_status' => $order?->payment_status,
+                'discount_amount' => (float) ($order?->discount_amount ?? 0),
+                'delivery_fee' => (float) ($order?->delivery_fee ?? 0),
+                'delivery_address_id' => $order?->delivery_address_id,
+
+                'product_id' => $item->product_id,
                 'product_name' => $product?->name ?? null,
                 'product_name_ar' => $product?->name_ar ?? null,
-                // DomPDF is sensitive to relative/invalid URLs.
-                'first_image_url' => $this->fullImageUrl($product?->first_image_url ?? null),
                 'category' => $product?->category?->name ?? null,
-                'total_quantity_sold' => (int) ($row->total_quantity ?? 0),
-                'total_revenue' => round((float) ($row->total_revenue ?? 0), 2),
-            ];
-        })->sortByDesc('total_revenue')->values()->all();
+                'subcategory' => $product?->subcategory?->name ?? null,
 
-        $totalQuantity = array_sum(array_map(fn ($p) => (int) ($p['total_quantity_sold'] ?? 0), $report));
-        $totalRevenue = round(array_sum(array_map(fn ($p) => (float) ($p['total_revenue'] ?? 0), $report)), 2);
+                'first_image_url' => $this->fullImageUrl($product?->first_image_url ?? null),
+                'quantity' => (int) ($item->quantity ?? 0),
+                'unit_price' => (float) ($item->unit_price ?? 0),
+                'total_price' => (float) ($item->total_price ?? 0),
+            ];
+        })->values()->all();
+
+        $totalQuantity = array_sum(array_map(fn ($r) => (int) ($r['quantity'] ?? 0), $rows));
+        $totalRevenue = round(array_sum(array_map(fn ($r) => (float) ($r['total_price'] ?? 0), $rows)), 2);
+
+        // Keep aggregated `products` for UI/compat if needed.
+        // (We compute it from rows, but the report UI now uses `items`.)
+        $products = [];
 
         return [
             'period' => [
@@ -245,11 +271,12 @@ class ShopReportService
                 'to' => $toDt->toDateString(),
             ],
             'totals' => [
-                'products_count' => count($report),
+                'products_count' => count($rows),
                 'total_quantity_sold' => $totalQuantity,
                 'total_revenue' => $totalRevenue,
             ],
-            'products' => $report,
+            'items' => $rows,
+            'products' => $products,
         ];
     }
 
@@ -268,14 +295,12 @@ class ShopReportService
             ->whereBetween('created_at', [$fromDt, $toDt])
             ->with('order')
             ->latest('created_at')
-            ->limit(250)
             ->get();
 
         $adjustments = ShopWalletAdjustment::where('shop_id', $shop->id)
             ->whereBetween('created_at', [$fromDt, $toDt])
             ->with('adminUser')
             ->latest('created_at')
-            ->limit(250)
             ->get();
 
         $transactions = $orderTransactions
@@ -289,6 +314,7 @@ class ShopReportService
                     'status' => $t->status ?? 'completed',
                     'order_id' => $t->order_id,
                     'order_number' => $t->order?->order_number,
+                    'user_id' => $t->user_id,
                     'created_at' => $t->created_at?->toIso8601String(),
                 ];
             })
@@ -300,6 +326,7 @@ class ShopReportService
                         'type' => $a->type,
                         'amount' => (float) ($a->amount ?? 0),
                         'description' => $a->description,
+                        'user_id' => null,
                         'admin_user_id' => $a->admin_user_id,
                         'created_at' => $a->created_at?->toIso8601String(),
                     ];
@@ -328,7 +355,6 @@ class ShopReportService
             ->whereBetween('ordered_at', [$fromDt, $toDt])
             ->with(['representative.user', 'visit', 'items.companyProduct', 'customerShop', 'customerDoctor'])
             ->latest('ordered_at')
-            ->limit(2000)
             ->get();
 
         $byStatus = $orders->groupBy('status')->map->count()->all();
@@ -363,7 +389,6 @@ class ShopReportService
             ->whereIn('representative_id', $repIds)
             ->whereBetween('visit_date', [$fromDt->toDateString(), $toDt->toDateString()])
             ->latest('visit_date')
-            ->limit(2000)
             ->get();
 
         $byStatus = $visits->groupBy('status')->map->count()->all();
@@ -402,7 +427,6 @@ class ShopReportService
             ->whereBetween('ordered_at', [$fromDt, $toDt])
             ->with(['representative.user', 'visit', 'items.companyProduct', 'customerShop', 'customerDoctor'])
             ->latest('ordered_at')
-            ->limit(2000)
             ->get();
 
         $byStatus = $orders->groupBy('status')->map->count()->all();

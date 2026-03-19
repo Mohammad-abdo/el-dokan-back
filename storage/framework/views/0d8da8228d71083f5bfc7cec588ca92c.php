@@ -213,10 +213,10 @@
         <div class="section">
             <div class="section-header">
                 <span class="section-title">Products &amp; Sales</span>
-                <span class="section-count"><?php echo e(count($pblock['products'] ?? [])); ?> items</span>
+                <span class="section-count"><?php echo e(count($pblock['items'] ?? [])); ?> rows</span>
             </div>
             <div class="section-body">
-                <?php if(!empty($pblock['products'])): ?>
+                <?php if(!empty($pblock['items'])): ?>
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -224,12 +224,22 @@
                                 <th>Image</th>
                                 <th>Product</th>
                                 <th>Category</th>
-                                <th>Qty Sold</th>
-                                <th>Total Revenue</th>
+                                <th>Order #</th>
+                                <th>Order Date</th>
+                                <th>Order Status</th>
+                                <th>Payment Method</th>
+                                <th>Payment Status</th>
+                                <th>Discount</th>
+                                <th>Delivery Fee</th>
+                                <th>Delivery Address ID</th>
+                                <th>Customer</th>
+                                <th>Qty</th>
+                                <th>Unit Price</th>
+                                <th>Total Price</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $__currentLoopData = ($pblock['products'] ?? []); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php $__currentLoopData = ($pblock['items'] ?? []); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $p): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <tr>
                                     <td><?php echo e($i + 1); ?></td>
                                     <td>
@@ -241,14 +251,28 @@
                                     </td>
                                     <td><?php echo e($p['product_name'] ?? ($p['product_name_ar'] ?? '-')); ?></td>
                                     <td><?php echo e($p['category'] ?? '-'); ?></td>
-                                    <td><?php echo e($p['total_quantity_sold'] ?? 0); ?></td>
-                                    <td><?php echo e(number_format($p['total_revenue'] ?? 0, 2)); ?></td>
+                                    <td><?php echo e($p['order_number'] ?? '-'); ?></td>
+                                    <td><?php echo e($p['order_created_at'] ?? '-'); ?></td>
+                                    <td><span class="badge badge-gray"><?php echo e(ucfirst($p['order_status'] ?? '-')); ?></span></td>
+                                    <td><?php echo e($p['payment_method'] ?? '-'); ?></td>
+                                    <td><?php echo e($p['payment_status'] ?? '-'); ?></td>
+                                    <td><?php echo e(number_format($p['discount_amount'] ?? 0, 2)); ?></td>
+                                    <td><?php echo e(number_format($p['delivery_fee'] ?? 0, 2)); ?></td>
+                                    <td><?php echo e($p['delivery_address_id'] ?? '-'); ?></td>
+                                    <td>
+                                        <?php echo e($p['customer_name'] ?? '-'); ?>
+
+                                        <?php if(!empty($p['customer_phone'])): ?><br><span style="color:#64748b; font-size:9px;"><?php echo e($p['customer_phone']); ?></span><?php endif; ?>
+                                    </td>
+                                    <td><?php echo e($p['quantity'] ?? 0); ?></td>
+                                    <td><?php echo e(number_format($p['unit_price'] ?? 0, 2)); ?></td>
+                                    <td><?php echo e(number_format($p['total_price'] ?? 0, 2)); ?></td>
                                 </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
                     </table>
                 <?php else: ?>
-                    <p class="no-data">No products found for this period.</p>
+                    <p class="no-data">No products/order items found for this period.</p>
                 <?php endif; ?>
             </div>
         </div>
@@ -290,8 +314,11 @@
                                 <th>Amount</th>
                                 <th>Commission</th>
                                 <th>Status</th>
-                                <th>Reference</th>
-                                <th>Date</th>
+                                <th>Order / Ref</th>
+                                <th>User ID</th>
+                                <th>Description</th>
+                                <th>Admin User</th>
+                                <th>Created At</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -311,8 +338,11 @@
                                     <td><?php echo e(number_format($t['amount'] ?? 0, 2)); ?></td>
                                     <td><?php echo e($t['commission'] ?? '-'); ?></td>
                                     <td><span class="badge <?php echo e($badge); ?>"><?php echo e(ucfirst($t['status'] ?? '-')); ?></span></td>
-                                    <td><?php echo e($t['order_number'] ?? ($t['description'] ?? '-')); ?></td>
-                                    <td><?php echo e(isset($t['created_at']) ? \Carbon\Carbon::parse($t['created_at'])->format('M d, Y') : '-'); ?></td>
+                                    <td><?php echo e($t['order_number'] ?? ($t['order_id'] ?? ($t['description'] ?? '-'))); ?></td>
+                                    <td><?php echo e($t['user_id'] ?? '-'); ?></td>
+                                    <td><?php echo e(Str::limit($t['description'] ?? '-', 60)); ?></td>
+                                    <td><?php echo e($t['admin_user_id'] ?? '-'); ?></td>
+                                    <td><?php echo e(isset($t['created_at']) ? \Carbon\Carbon::parse($t['created_at'])->format('M d, Y H:i') : '-'); ?></td>
                                 </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
@@ -341,7 +371,10 @@
                             <th>Status</th>
                             <th>Ordered At</th>
                             <th>Representative</th>
+                            <th>Customer Type</th>
                             <th>Customer</th>
+                            <th>Visit</th>
+                            <th>Notes</th>
                             <th>Total Amount</th>
                             <th>Items</th>
                         </tr>
@@ -357,7 +390,11 @@
                                     default => 'badge-gray',
                                 };
                                 $repName = $o['representative']['user']['username'] ?? ($o['representative']['user']['name'] ?? '-');
+                                $customerType = $o['customer_type'] ?? '-';
                                 $customerName = $o['customerShop']['name'] ?? ($o['customerDoctor']['name'] ?? ($o['customer_id'] ?? '-'));
+                                $visitDate = $o['visit']['visit_date'] ?? null;
+                                $visitTime = $o['visit']['visit_time'] ?? null;
+                                $visitDoctorConfirmed = !empty($o['visit']['doctor_confirmed_at']);
                             ?>
                             <tr>
                                 <td><?php echo e($i + 1); ?></td>
@@ -365,10 +402,76 @@
                                 <td><span class="badge <?php echo e($badge); ?>"><?php echo e(ucfirst($st ?: '-')); ?></span></td>
                                 <td><?php echo e(isset($o['ordered_at']) ? \Carbon\Carbon::parse($o['ordered_at'])->format('M d, Y') : '-'); ?></td>
                                 <td><?php echo e($repName); ?></td>
-                                <td><?php echo e($customerName); ?></td>
+                                <td><?php echo e($customerType); ?></td>
+                                <td>
+                                    <?php echo e($customerName); ?>
+
+                                    <?php if(!empty($o['customerShop']['phone'])): ?><br><span style="color:#64748b; font-size:9px;"><?php echo e($o['customerShop']['phone']); ?></span><?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if(!empty($o['visit'])): ?>
+                                        <?php echo e($visitDate ? \Carbon\Carbon::parse($visitDate)->format('M d, Y') : '-'); ?>
+
+                                        <?php if(!empty($visitTime)): ?><br><span style="color:#64748b; font-size:9px;"><?php echo e($visitTime); ?></span><?php endif; ?>
+                                        <?php if(!empty($o['visit']['doctor_confirmed_at'])): ?>
+                                            <br><span style="color:#059669; font-size:9px;">Confirmed</span>
+                                        <?php else: ?>
+                                            <br><span style="color:#64748b; font-size:9px;">Not confirmed</span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo e(Str::limit($o['notes'] ?? '-', 60)); ?></td>
                                 <td><?php echo e(number_format($o['total_amount'] ?? 0, 2)); ?></td>
                                 <td><?php echo e(count($o['items'] ?? [])); ?></td>
                             </tr>
+                            <?php if(!empty($o['items'])): ?>
+                                <tr>
+                                    <td></td>
+                                    <td colspan="10">
+                                        <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">SKU</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Product</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Qty</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Unit Price</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Total</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Image</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php $__currentLoopData = ($o['items'] ?? []); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <?php
+                                                        $cp = $item['companyProduct'] ?? [];
+                                                        $img = $cp['first_image_url'] ?? null;
+                                                    ?>
+                                                    <tr>
+                                                        <td style="padding:3px 6px;"><?php echo e($cp['sku'] ?? '-'); ?></td>
+                                                        <td style="padding:3px 6px;">
+                                                            <?php echo e($cp['name'] ?? ($cp['name_ar'] ?? '-')); ?>
+
+                                                        </td>
+                                                        <td style="padding:3px 6px;"><?php echo e($item['quantity'] ?? 0); ?></td>
+                                                        <td style="padding:3px 6px;"><?php echo e(number_format($item['unit_price'] ?? 0, 2)); ?></td>
+                                                        <td style="padding:3px 6px;"><?php echo e(number_format($item['total_price'] ?? 0, 2)); ?></td>
+                                                        <td style="padding:3px 6px;">
+                                                            <?php if(!empty($img)): ?>
+                                                                <img class="img-thumb" style="width:30px; height:30px;" src="<?php echo e($img); ?>" />
+                                                            <?php else: ?>
+                                                                -
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td style="padding:3px 6px;"><?php echo e($cp['product_type'] ?? '-'); ?></td>
+                                                    </tr>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </tbody>
                 </table>
@@ -396,6 +499,9 @@
                             <th>Purpose</th>
                             <th>Status</th>
                             <th>Confirmed</th>
+                            <th>Notes</th>
+                            <th>Rejection Reason</th>
+                            <th>Files</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -419,6 +525,13 @@
                                 <td><?php echo e(Str::limit($v['purpose'] ?? '-', 40)); ?></td>
                                 <td><span class="badge <?php echo e($badge); ?>"><?php echo e(ucfirst($st ?: '-')); ?></span></td>
                                 <td><?php echo e(!empty($v['doctor_confirmed_at']) ? '&#10003;' : '&mdash;'); ?></td>
+                                <td><?php echo e(Str::limit($v['notes'] ?? ($v['rejection_reason'] ?? '-'), 60)); ?></td>
+                                <td><?php echo e(Str::limit($v['rejection_reason'] ?? '-', 60)); ?></td>
+                                <td>
+                                    <?php $files = $v['files'] ?? []; ?>
+                                    <?php echo e(is_array($files) ? count($files) : 0); ?>
+
+                                </td>
                             </tr>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </tbody>
@@ -486,6 +599,8 @@
                             <th>Representative</th>
                             <th>Customer Type</th>
                             <th>Customer</th>
+                            <th>Visit</th>
+                            <th>Notes</th>
                             <th>Total Amount</th>
                             <th>Items</th>
                         </tr>
@@ -502,6 +617,8 @@
                                 };
                                 $repName = $o['representative']['user']['username'] ?? ($o['representative']['user']['name'] ?? '-');
                                 $customerName = $o['customerShop']['name'] ?? ($o['customerDoctor']['name'] ?? ($o['customer_id'] ?? '-'));
+                                $visitDate = $o['visit']['visit_date'] ?? null;
+                                $visitTime = $o['visit']['visit_time'] ?? null;
                             ?>
                             <tr>
                                 <td><?php echo e($i + 1); ?></td>
@@ -511,9 +628,65 @@
                                 <td><?php echo e($repName); ?></td>
                                 <td><?php echo e($o['customer_type'] ?? '-'); ?></td>
                                 <td><?php echo e($customerName); ?></td>
+                                <td>
+                                    <?php if(!empty($o['visit'])): ?>
+                                        <?php echo e($visitDate ? \Carbon\Carbon::parse($visitDate)->format('M d, Y') : '-'); ?>
+
+                                        <?php if(!empty($visitTime)): ?><br><span style="color:#64748b; font-size:9px;"><?php echo e($visitTime); ?></span><?php endif; ?>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo e(Str::limit($o['notes'] ?? '-', 60)); ?></td>
                                 <td><?php echo e(number_format($o['total_amount'] ?? 0, 2)); ?></td>
                                 <td><?php echo e(count($o['items'] ?? [])); ?></td>
                             </tr>
+                            <?php if(!empty($o['items'])): ?>
+                                <tr>
+                                    <td></td>
+                                    <td colspan="10">
+                                        <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">SKU</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Product</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Qty</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Unit Price</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Total</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Image</th>
+                                                    <th style="background:#e0f2fe; padding:3px 6px; text-align:right;">Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php $__currentLoopData = ($o['items'] ?? []); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <?php
+                                                        $cp = $item['companyProduct'] ?? [];
+                                                        $img = $cp['first_image_url'] ?? null;
+                                                    ?>
+                                                    <tr>
+                                                        <td style="padding:3px 6px;"><?php echo e($cp['sku'] ?? '-'); ?></td>
+                                                        <td style="padding:3px 6px;">
+                                                            <?php echo e($cp['name'] ?? ($cp['name_ar'] ?? '-')); ?>
+
+                                                        </td>
+                                                        <td style="padding:3px 6px;"><?php echo e($item['quantity'] ?? 0); ?></td>
+                                                        <td style="padding:3px 6px;"><?php echo e(number_format($item['unit_price'] ?? 0, 2)); ?></td>
+                                                        <td style="padding:3px 6px;"><?php echo e(number_format($item['total_price'] ?? 0, 2)); ?></td>
+                                                        <td style="padding:3px 6px;">
+                                                            <?php if(!empty($img)): ?>
+                                                                <img class="img-thumb" style="width:30px; height:30px;" src="<?php echo e($img); ?>" />
+                                                            <?php else: ?>
+                                                                -
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td style="padding:3px 6px;"><?php echo e($cp['product_type'] ?? '-'); ?></td>
+                                                    </tr>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </tbody>
                 </table>
