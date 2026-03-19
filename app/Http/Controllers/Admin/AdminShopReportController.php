@@ -29,7 +29,7 @@ class AdminShopReportController extends Controller
             'shop_id' => 'required|integer|exists:shops,id',
             'report_type' => 'required|in:full,custom',
             'sections' => 'required_if:report_type,custom|array',
-            'sections.*' => 'in:overview,products,wallet,ordersFromReps,visits,representatives,companyOrders,branches,documents',
+            'sections.*' => 'in:overview,products,plan,companyProducts,wallet,ordersFromReps,visits,representatives,companyOrders,branches,documents',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after_or_equal:date_from',
             'format' => 'required|in:pdf,excel,json',

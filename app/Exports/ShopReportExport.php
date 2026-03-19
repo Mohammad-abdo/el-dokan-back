@@ -46,6 +46,65 @@ class ShopReportExport implements FromArray
             $rows[] = [];
         }
 
+        // Plan (company only)
+        if (!empty($sections['plan'])) {
+            $addSectionTitle('Company Plan');
+            $planBlock = $sections['plan'] ?? [];
+            $plan = $planBlock['plan'] ?? [];
+            $usage = $planBlock['usage'] ?? [];
+
+            if (!empty($plan)) {
+                $addKeyValueTable([
+                    'name' => $plan['name'] ?? '',
+                    'name_ar' => $plan['name_ar'] ?? '',
+                    'slug' => $plan['slug'] ?? '',
+                    'max_products' => $plan['max_products'] ?? '',
+                    'max_branches' => $plan['max_branches'] ?? '',
+                    'max_representatives' => $plan['max_representatives'] ?? '',
+                    'price' => $plan['price'] ?? '',
+                    'is_active' => isset($plan['is_active']) ? ($plan['is_active'] ? 'Yes' : 'No') : '',
+                ]);
+            }
+
+            if (!empty($usage)) {
+                $addKeyValueTable([
+                    'usage_products' => $usage['products'] ?? '',
+                    'usage_branches' => $usage['branches'] ?? '',
+                    'usage_representatives' => $usage['representatives'] ?? '',
+                ]);
+            }
+
+            if (!empty($plan['features'] ?? null)) {
+                $rows[] = [];
+                $rows[] = ['Features', is_scalar($plan['features']) ? (string) $plan['features'] : json_encode($plan['features'], JSON_UNESCAPED_UNICODE)];
+                $rows[] = [];
+            }
+            $rows[] = [];
+        }
+
+        // Company Products (catalog)
+        if (!empty($sections['companyProducts'])) {
+            $addSectionTitle('Company Products');
+            $cpb = $sections['companyProducts'] ?? [];
+            $products = $cpb['products'] ?? [];
+
+            $rows[] = ['#', 'SKU', 'Name', 'Name (AR)', 'Type', 'Unit Price', 'Stock Qty', 'Active', 'First Image URL'];
+            foreach ($products as $i => $p) {
+                $rows[] = [
+                    $i + 1,
+                    $p['sku'] ?? '',
+                    $p['name'] ?? '',
+                    $p['name_ar'] ?? '',
+                    $p['product_type'] ?? '',
+                    $p['unit_price'] ?? 0,
+                    $p['stock_quantity'] ?? 0,
+                    isset($p['is_active']) ? ($p['is_active'] ? 'Yes' : 'No') : '',
+                    $p['first_image_url'] ?? '',
+                ];
+            }
+            $rows[] = [];
+        }
+
         // Products
         if (!empty($sections['products'])) {
             $addSectionTitle('Products & Sales');

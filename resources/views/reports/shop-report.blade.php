@@ -204,6 +204,120 @@
         </div>
     @endif
 
+    {{-- ── PLAN ── --}}
+    @if(isset($report['sections']['plan']))
+        @php $pl = $report['sections']['plan']; @endphp
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">Company Plan</span>
+                <span class="section-count">{{ $pl['plan']['name_ar'] ?? $pl['plan']['name'] ?? '-' }}</span>
+            </div>
+            <div class="section-body">
+                @if(!empty($pl['plan']))
+                    <table class="kv-table">
+                        <tbody>
+                        @foreach([
+                            'max_products' => $pl['plan']['max_products'] ?? null,
+                            'max_branches' => $pl['plan']['max_branches'] ?? null,
+                            'max_representatives' => $pl['plan']['max_representatives'] ?? null,
+                            'price' => $pl['plan']['price'] ?? null,
+                            'is_active' => $pl['plan']['is_active'] ?? null,
+                        ] as $k => $v)
+                            <tr>
+                                <td>{{ $k }}</td>
+                                <td>{{ isset($v) ? (is_bool($v) ? ($v ? 'Yes' : 'No') : $v) : '-' }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+
+                    <table class="kv-table" style="margin-top:10px;">
+                        <tbody>
+                        @foreach([
+                            'usage_products' => $pl['usage']['products'] ?? null,
+                            'usage_branches' => $pl['usage']['branches'] ?? null,
+                            'usage_representatives' => $pl['usage']['representatives'] ?? null,
+                        ] as $k => $v)
+                            <tr>
+                                <td>{{ $k }}</td>
+                                <td>{{ $v ?? '-' }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+
+                    @if(!empty($pl['plan']['features']))
+                        <div style="margin-top:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px;">
+                            <div style="font-size:10px; font-weight:700; color:#64748b; margin-bottom:6px;">Features</div>
+                            <div style="font-size:10px; color:#374151;">
+                                {{ Str::limit(json_encode($pl['plan']['features'], JSON_UNESCAPED_UNICODE), 450) }}
+                            </div>
+                        </div>
+                    @endif
+                @else
+                    <p class="no-data">No plan data.</p>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    {{-- ── COMPANY PRODUCTS ── --}}
+    @if(isset($report['sections']['companyProducts']))
+        @php $cpb = $report['sections']['companyProducts']; @endphp
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">Company Products</span>
+                <span class="section-count">{{ $cpb['total'] ?? count($cpb['products'] ?? []) }} items</span>
+            </div>
+            <div class="section-body">
+                @if(!empty($cpb['products']))
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Image</th>
+                                <th>Name</th>
+                                <th>Name (AR)</th>
+                                <th>SKU</th>
+                                <th>Type</th>
+                                <th>Unit Price</th>
+                                <th>Stock</th>
+                                <th>Active</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach(($cpb['products'] ?? []) as $i => $p)
+                            @php
+                                $stock = (int) ($p['stock_quantity'] ?? 0);
+                                $stockBadge = $stock > 0 ? 'badge-green' : 'badge-red';
+                            @endphp
+                            <tr>
+                                <td>{{ $i + 1 }}</td>
+                                <td>
+                                    @if(!empty($p['first_image_url']))
+                                        <img class="img-thumb" style="width:34px; height:34px;" src="{{ $p['first_image_url'] }}" />
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>{{ $p['name'] ?? '-' }}</td>
+                                <td>{{ $p['name_ar'] ?? '-' }}</td>
+                                <td>{{ $p['sku'] ?? '-' }}</td>
+                                <td>{{ $p['product_type'] ?? '-' }}</td>
+                                <td>{{ number_format($p['unit_price'] ?? 0, 2) }}</td>
+                                <td><span class="badge {{ $stockBadge }}">{{ $stock }}</span></td>
+                                <td>{{ isset($p['is_active']) ? ($p['is_active'] ? '&#10003;' : '&times;') : '-' }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <p class="no-data">No company products found.</p>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- ── PRODUCTS ── --}}
     @if(isset($report['sections']['products']))
         @php $pblock = $report['sections']['products']; @endphp

@@ -906,4 +906,4 @@
 </body>
 </html>
 
-<?php /**PATH C:\Users\HP\Desktop\Eldokan\backend\resources\views\reports\shop-report.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\Users\HP\Desktop\Eldokan\backend\resources\views/reports/shop-report.blade.php ENDPATH**/ ?>

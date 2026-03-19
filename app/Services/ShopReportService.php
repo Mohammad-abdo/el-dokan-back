@@ -17,6 +17,8 @@ class ShopReportService
 {
     private const ALLOWED_SECTIONS = [
         'overview',
+        'plan',
+        'companyProducts',
         'products',
         'wallet',
         'ordersFromReps',
@@ -60,6 +62,8 @@ class ShopReportService
         foreach ($sections as $section) {
             $report['sections'][$section] = match ($section) {
                 'overview' => $this->getOverview($shop, $fromDt, $toDt),
+                'plan' => $this->getCompanyPlan($shop),
+                'companyProducts' => $this->getCompanyCatalogProducts($shop),
                 'products' => $this->getProducts($shop, $fromDt, $toDt),
                 'wallet' => $this->getWallet($shop, $fromDt, $toDt),
                 'ordersFromReps' => $this->getOrdersFromReps($shop, $fromDt, $toDt),
@@ -156,7 +160,10 @@ class ShopReportService
             ->whereBetween('created_at', [$fromDt, $toDt])
             ->sum('total_amount');
 
-        $productsCount = (int) $shop->products()->count();
+        // For companies, catalog is stored in company_products (different from shop products).
+        $productsCount = $shop->isCompany()
+            ? (int) $shop->companyProducts()->count()
+            : (int) $shop->products()->count();
         $representativesCount = (int) $shop->representatives()->count();
         $branchesCount = (int) $shop->branches()->count();
         $documentsCount = (int) $shop->documents()->count();
@@ -457,6 +464,66 @@ class ShopReportService
 
         return [
             'documents' => $result,
+        ];
+    }
+
+    private function getCompanyPlan(Shop $shop): array
+    {
+        // Plan is meaningful for companies; for non-companies still return null-ish values.
+        $plan = $shop->companyPlan;
+
+        $productsCount = $shop->companyProducts()->count();
+        $branchesCount = $shop->branches()->count();
+        $representativesCount = $shop->representatives()->count();
+
+        return [
+            'plan' => $plan ? [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'name_ar' => $plan->name_ar ?? null,
+                'slug' => $plan->slug,
+                'max_products' => (int) $plan->max_products,
+                'max_branches' => (int) $plan->max_branches,
+                'max_representatives' => (int) $plan->max_representatives,
+                'price' => (float) ($plan->price ?? 0),
+                'features' => $plan->features,
+                'is_active' => (bool) ($plan->is_active ?? true),
+            ] : null,
+            'usage' => [
+                'products' => (int) $productsCount,
+                'branches' => (int) $branchesCount,
+                'representatives' => (int) $representativesCount,
+            ],
+        ];
+    }
+
+    private function getCompanyCatalogProducts(Shop $shop): array
+    {
+        $products = $shop->companyProducts()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $result = $products->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'name' => $p->name ?? null,
+                'name_ar' => $p->name_ar ?? null,
+                'sku' => $p->sku ?? null,
+                'description' => $p->description ?? null,
+                'description_ar' => $p->description_ar ?? null,
+                'product_type' => $p->product_type ?? null,
+                'unit' => $p->unit ?? null,
+                'unit_price' => (float) ($p->unit_price ?? 0),
+                'stock_quantity' => (int) ($p->stock_quantity ?? 0),
+                'is_active' => (bool) ($p->is_active ?? true),
+                'first_image_url' => $p->first_image_url ?? null,
+            ];
+        })->values()->all();
+
+        return [
+            'products' => $result,
+            'total' => count($result),
         ];
     }
 }
