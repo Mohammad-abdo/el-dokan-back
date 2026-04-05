@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserWalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -134,14 +136,29 @@ class UserController extends Controller
         }
 
         $user = $request->user();
-        $user->increment('wallet_balance', $request->amount);
+
+        DB::transaction(function () use ($user, $request) {
+            $lockedUser = User::lockForUpdate()->find($user->id);
+            $balanceBefore = $lockedUser->wallet_balance;
+            $lockedUser->increment('wallet_balance', $request->amount);
+            UserWalletTransaction::create([
+                'user_id'        => $lockedUser->id,
+                'type'           => 'credit',
+                'amount'         => $request->amount,
+                'balance_before' => $balanceBefore,
+                'balance_after'  => $lockedUser->fresh()->wallet_balance,
+                'description'    => 'Wallet top-up',
+                'reference_type' => null,
+                'reference_id'   => null,
+            ]);
+        });
+
+        $user->refresh();
 
         return response()->json([
             'success' => true,
             'message' => 'Wallet topped up successfully',
-            'data' => [
-                'balance' => $user->wallet_balance
-            ]
+            'data' => ['balance' => $user->wallet_balance]
         ]);
     }
 }

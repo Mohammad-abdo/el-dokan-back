@@ -61,7 +61,8 @@ class AdminSupportController extends Controller
 
         $ticket->update([
             'assigned_to' => $request->assigned_to,
-            'status' => 'in_progress',
+            'assigned_at' => now(),
+            'status'      => 'in_progress',
         ]);
 
         return response()->json([

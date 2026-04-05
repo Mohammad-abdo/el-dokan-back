@@ -8,14 +8,18 @@ use App\Http\Requests\Api\Auth\LoginRequest;
 use App\Http\Requests\Api\Auth\OtpVerifyRequest;
 use App\Http\Requests\Api\Auth\ChangePasswordRequest;
 use App\Http\Requests\Api\Auth\SocialLoginRequest;
+use App\Models\FailedLoginAttempt;
+use App\Models\OtpVerification;
+use App\Models\PasswordResetToken;
+use App\Models\RefreshToken;
 use App\Models\User;
 use App\Models\Doctor;
 use App\Models\Shop;
 use App\Models\CompanyPlan;
-use App\Models\OtpVerification;
 use App\Services\OtpService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -23,6 +27,12 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
+    const MAX_LOGIN_ATTEMPTS = 5;
+    const LOCKOUT_MINUTES = 15;
+    const OTP_MAX_ATTEMPTS = 5;
+    const TOKEN_EXPIRY_HOURS = 24;
+    const REFRESH_TOKEN_DAYS = 30;
+
     protected OtpService $otpService;
 
     public function __construct(OtpService $otpService)
@@ -30,17 +40,12 @@ class AuthController extends Controller
         $this->otpService = $otpService;
     }
 
-    /**
-     * Format user data with roles
-     */
     protected function formatUserData(User $user): array
     {
-        // Load roles if not already loaded
         if (!$user->relationLoaded('roles')) {
             $user->load('roles');
         }
 
-        // Sync role field with Spatie roles if role field is empty or different
         $roleNames = $user->roles->pluck('name')->toArray();
         if (empty($user->role) || !in_array($user->role, $roleNames)) {
             if (!empty($roleNames)) {
@@ -84,20 +89,85 @@ class AuthController extends Controller
         return $data;
     }
 
-    /**
-     * Register a new user
-     */
+    protected function createAuthToken(User $user): array
+    {
+        $accessToken = $user->createToken('auth_token', ['*'], new \DateTimeImmutable('+' . self::TOKEN_EXPIRY_HOURS . ' hours'))->plainTextToken;
+
+        $refreshToken = RefreshToken::create([
+            'user_id'    => $user->id,
+            'token'      => hash('sha256', Str::random(64)),
+            'expires_at' => new \DateTimeImmutable('+' . self::REFRESH_TOKEN_DAYS . ' days'),
+        ]);
+
+        return [
+            'access_token'  => $accessToken,
+            'refresh_token' => $refreshToken->token,
+            'expires_in'    => self::TOKEN_EXPIRY_HOURS * 3600,
+        ];
+    }
+
+    // ─── Login attempt tracking helpers ───────────────────────────────────────
+
+    protected function recordFailedLogin(string $identifier, string $ip): void
+    {
+        $record = FailedLoginAttempt::where('identifier', $identifier)
+            ->where('ip_address', $ip)
+            ->first();
+
+        if ($record) {
+            $record->attempts++;
+            $record->last_attempt_at = now();
+            if ($record->attempts >= self::MAX_LOGIN_ATTEMPTS) {
+                $record->locked_until = new \DateTimeImmutable('+' . self::LOCKOUT_MINUTES . ' minutes');
+            }
+            $record->save();
+        } else {
+            FailedLoginAttempt::create([
+                'identifier'      => $identifier,
+                'ip_address'      => $ip,
+                'attempts'        => 1,
+                'last_attempt_at' => now(),
+            ]);
+        }
+    }
+
+    protected function isLockedOut(string $identifier, string $ip): bool
+    {
+        $record = FailedLoginAttempt::where('identifier', $identifier)
+            ->where('ip_address', $ip)
+            ->first();
+
+        if (!$record || !$record->locked_until) {
+            return false;
+        }
+
+        if ($record->locked_until->isPast()) {
+            $record->delete();
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function clearLoginAttempts(string $identifier, string $ip): void
+    {
+        FailedLoginAttempt::where('identifier', $identifier)
+            ->where('ip_address', $ip)
+            ->delete();
+    }
+
+    // ─── Public endpoints ──────────────────────────────────────────────────────
+
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = User::create([
             'username' => $request->username,
-            'phone' => $request->phone,
-            'email' => $request->email,
+            'phone'    => $request->phone,
+            'email'    => $request->email,
             'password' => $request->password ? Hash::make($request->password) : null,
-            'status' => 'pending',
+            'status'   => 'pending',
         ]);
 
-        // Generate and send OTP
         $this->otpService->generateOtp($request->phone, 'verification');
 
         return response()->json([
@@ -105,95 +175,78 @@ class AuthController extends Controller
             'message' => 'User registered successfully. Please verify OTP.',
             'data' => [
                 'user_id' => $user->id,
-                'phone' => $user->phone,
+                'phone'   => $user->phone,
             ]
         ], 201);
     }
 
-    /**
-     * Register a new doctor (public). Account stays pending_review until admin activates.
-     */
     public function registerDoctor(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'phone' => 'required|string|max:50',
-            'specialty' => 'required|string|max:255',
+            'name'                  => 'required|string|max:255',
+            'email'                 => 'required|email|unique:users,email',
+            'password'              => 'required|string|min:6|confirmed',
+            'phone'                 => 'required|string|max:50',
+            'specialty'             => 'required|string|max:255',
             'available_hours_start' => 'required|string|max:10',
-            'available_hours_end' => 'required|string|max:10',
-            'location' => 'nullable|string',
+            'available_hours_end'   => 'required|string|max:10',
+            'location'              => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
         $user = User::create([
             'username' => $request->email,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'email'    => $request->email,
+            'phone'    => $request->phone,
             'password' => Hash::make($request->password),
-            'status' => 'active',
+            'status'   => 'active',
         ]);
 
         $user->assignRole('doctor');
         $user->update(['role' => 'doctor']);
 
         Doctor::create([
-            'user_id' => $user->id,
-            'name' => $request->name,
-            'specialty' => $request->specialty,
+            'user_id'               => $user->id,
+            'name'                  => $request->name,
+            'specialty'             => $request->specialty,
             'available_hours_start' => $request->available_hours_start,
-            'available_hours_end' => $request->available_hours_end,
-            'location' => $request->location ?? '',
-            'available_days' => $request->available_days ?? [],
-            'status' => 'pending_review',
-            'is_active' => false,
+            'available_hours_end'   => $request->available_hours_end,
+            'location'              => $request->location ?? '',
+            'available_days'        => $request->available_days ?? [],
+            'status'                => 'pending_review',
+            'is_active'             => false,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Thank you for registering. Your account is under review. We will notify you once it is activated.',
-            'data' => [
-                'user_id' => $user->id,
-                'email' => $user->email,
-            ],
+            'message' => 'Thank you for registering. Your account is under review.',
+            'data' => ['user_id' => $user->id, 'email' => $user->email],
         ], 201);
     }
 
-    /**
-     * Register a new company (pending admin approval).
-     */
     public function registerCompany(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
-            'phone' => 'required|string|max:50',
-            'address' => 'required|string',
+            'phone'    => 'required|string|max:50',
+            'address'  => 'required|string',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
         $user = User::create([
             'username' => $request->email,
-            'email' => $request->email,
-            'phone' => $request->phone,
+            'email'    => $request->email,
+            'phone'    => $request->phone,
             'password' => Hash::make($request->password),
-            'status' => 'active',
+            'status'   => 'active',
         ]);
 
         $user->assignRole('company');
@@ -201,102 +254,82 @@ class AuthController extends Controller
 
         $defaultPlan = CompanyPlan::where('slug', 'basic')->first();
         $shop = Shop::create([
-            'user_id' => $user->id,
-            'name' => $request->name,
-            'category' => 'company',
-            'address' => $request->address,
-            'phone' => $request->phone,
-            'is_active' => false,
-            'vendor_status' => Shop::VENDOR_STATUS_PENDING,
+            'user_id'         => $user->id,
+            'name'            => $request->name,
+            'category'        => 'company',
+            'address'         => $request->address,
+            'phone'           => $request->phone,
+            'is_active'       => false,
+            'vendor_status'   => Shop::VENDOR_STATUS_PENDING,
             'company_plan_id' => $defaultPlan?->id,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Company registration submitted. Your account is pending admin approval. You will be notified once activated.',
+            'message' => 'Company registration submitted. Pending admin approval.',
             'data' => [
-                'user_id' => $user->id,
-                'company_id' => $shop->id,
-                'email' => $user->email,
+                'user_id'       => $user->id,
+                'company_id'    => $shop->id,
+                'email'         => $user->email,
                 'vendor_status' => 'pending_approval',
             ],
         ], 201);
     }
 
-    /**
-     * Login user
-     */
     public function login(Request $request): JsonResponse
     {
-        // Validate email + password only
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
-        // Find user by email
-        $user = User::where('email', $request->email)->first();
+        $identifier = $request->email;
+        $ip = $request->ip();
 
-        if (!$user) {
+        if ($this->isLockedOut($identifier, $ip)) {
             return response()->json([
                 'success' => false,
-                'message' => 'User not found',
-            ], 404);
+                'message' => 'Too many failed attempts. Account temporarily locked. Please try again later.',
+            ], 429);
         }
 
-        // Check password
-        if (!Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid credentials',
-            ], 401);
+        $user = User::where('email', $identifier)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            $this->recordFailedLogin($identifier, $ip);
+            return response()->json(['success' => false, 'message' => 'Invalid credentials'], 401);
         }
 
-        // Activate pending users
+        $this->clearLoginAttempts($identifier, $ip);
+
         if ($user->status === 'pending') {
             $user->update(['status' => 'active']);
         }
 
-        // Create token
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $tokens = $this->createAuthToken($user);
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful',
-            'data' => [
-                'user' => $this->formatUserData($user),
-                'token' => $token,
-            ]
+            'data' => array_merge(['user' => $this->formatUserData($user)], $tokens),
         ]);
     }
 
-
-    /**
-     * Social login (Google, Apple)
-     */
     public function socialLogin(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'provider' => 'required|in:google,apple',
+            'provider'    => 'required|in:google,apple',
             'provider_id' => 'required|string',
-            'email' => 'nullable|email',
-            'name' => 'nullable|string',
+            'email'       => 'nullable|email',
+            'name'        => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
         $user = User::where('provider', $request->provider)
@@ -304,84 +337,78 @@ class AuthController extends Controller
             ->first();
 
         if (!$user) {
-            // Create new user
             $user = User::create([
-                'username' => $request->name ?? Str::random(8),
-                'email' => $request->email,
-                'provider' => $request->provider,
+                'username'    => $request->name ?? Str::random(8),
+                'email'       => $request->email,
+                'provider'    => $request->provider,
                 'provider_id' => $request->provider_id,
-                'status' => 'active',
+                'status'      => 'active',
             ]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $tokens = $this->createAuthToken($user);
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful',
-            'data' => [
-                'user' => $this->formatUserData($user),
-                'token' => $token,
-            ]
+            'data' => array_merge(['user' => $this->formatUserData($user)], $tokens),
         ]);
     }
 
-    /**
-     * Verify OTP
-     */
     public function verifyOtp(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required|string',
-            'otp' => 'required|string|size:6',
+            'otp'   => 'required|string|size:6',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
+        }
+
+        $otpRecord = OtpVerification::where('phone', $request->phone)
+            ->where('is_verified', false)
+            ->latest()
+            ->first();
+
+        if ($otpRecord) {
+            if ($otpRecord->locked_until && !$otpRecord->locked_until->isPast()) {
+                return response()->json(['success' => false, 'message' => 'OTP locked. Please request a new one.'], 429);
+            }
+
+            if ($otpRecord->attempts >= self::OTP_MAX_ATTEMPTS) {
+                $otpRecord->update(['locked_until' => new \DateTimeImmutable('+10 minutes')]);
+                return response()->json(['success' => false, 'message' => 'Too many attempts. OTP locked.'], 429);
+            }
+
+            $otpRecord->increment('attempts');
         }
 
         $verified = $this->otpService->verifyOtp($request->phone, $request->otp);
 
         if (!$verified) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or expired OTP'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Invalid or expired OTP'], 400);
         }
 
         $user = User::where('phone', $request->phone)->first();
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        // Activate user if pending
         if ($user->status === 'pending') {
             $user->update(['status' => 'active']);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $tokens = $this->createAuthToken($user);
 
         return response()->json([
             'success' => true,
             'message' => 'OTP verified successfully',
-            'data' => [
-                'user' => $this->formatUserData($user),
-                'token' => $token,
-            ]
+            'data' => array_merge(['user' => $this->formatUserData($user)], $tokens),
         ]);
     }
 
-    /**
-     * Resend OTP
-     */
     public function resendOtp(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -389,124 +416,152 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
-        $otp = $this->otpService->generateOtp($request->phone, 'verification');
+        $this->otpService->generateOtp($request->phone, 'verification');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'OTP resent successfully',
-        ]);
+        return response()->json(['success' => true, 'message' => 'OTP resent successfully']);
     }
 
-    /**
-     * Guest login
-     */
-    public function guestLogin(): JsonResponse
+    public function guestLogin(Request $request): JsonResponse
     {
-        $guestToken = Str::random(32);
+        $fingerprint = hash('sha256', $request->ip() . '|' . $request->userAgent());
+        $guestToken = hash('sha256', $fingerprint . '|' . time());
 
         return response()->json([
             'success' => true,
             'message' => 'Guest session created',
-            'data' => [
-                'guest_token' => $guestToken,
-            ]
+            'data' => ['guest_token' => $guestToken],
         ]);
     }
 
-    /**
-     * Get current authenticated user
-     */
-    public function me(Request $request): JsonResponse
+    public function forgotPassword(Request $request): JsonResponse
     {
-        $user = $request->user();
-        
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|exists:users,phone',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
+        }
+
+        $this->otpService->generateOtp($request->phone, 'password_reset');
+
+        DB::table('password_reset_tokens')->upsert(
+            ['phone' => $request->phone, 'token' => Str::random(64), 'created_at' => now()],
+            ['phone'],
+            ['token', 'created_at']
+        );
+
+        return response()->json(['success' => true, 'message' => 'OTP sent to your phone number.']);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'phone'        => 'required|string|exists:users,phone',
+            'otp'          => 'required|string|size:6',
+            'new_password' => 'required|string|min:6|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
+        }
+
+        $verified = $this->otpService->verifyOtp($request->phone, $request->otp);
+
+        if (!$verified) {
+            return response()->json(['success' => false, 'message' => 'Invalid or expired OTP'], 400);
+        }
+
+        $user = User::where('phone', $request->phone)->firstOrFail();
+        $user->update(['password' => Hash::make($request->new_password)]);
+
+        DB::table('password_reset_tokens')->where('phone', $request->phone)->delete();
+
+        return response()->json(['success' => true, 'message' => 'Password reset successfully.']);
+    }
+
+    public function refreshToken(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'refresh_token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
+        }
+
+        $refreshRecord = RefreshToken::where('token', $request->refresh_token)->first();
+
+        if (!$refreshRecord || $refreshRecord->isExpired()) {
+            return response()->json(['success' => false, 'message' => 'Invalid or expired refresh token'], 401);
+        }
+
+        $user = $refreshRecord->user;
+        $refreshRecord->delete();
+
+        $tokens = $this->createAuthToken($user);
+
         return response()->json([
             'success' => true,
-            'user' => $this->formatUserData($user),
+            'message' => 'Token refreshed successfully',
+            'data' => array_merge(['user' => $this->formatUserData($user)], $tokens),
         ]);
     }
 
-    /**
-     * Logout user
-     */
+    public function me(Request $request): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'user' => $this->formatUserData($request->user()),
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Logged out successfully',
-        ]);
+        return response()->json(['success' => true, 'message' => 'Logged out successfully']);
     }
 
-    /**
-     * Change password
-     */
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Current password is incorrect'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Current password is incorrect'], 400);
         }
 
-        $user->update([
-            'password' => Hash::make($request->new_password)
-        ]);
+        $user->update(['password' => Hash::make($request->new_password)]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Password changed successfully',
-        ]);
+        return response()->json(['success' => true, 'message' => 'Password changed successfully']);
     }
 
-    /**
-     * Login with prescription link
-     */
     public function loginWithLink(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'link' => 'required|string',
+            'link'  => 'required|string',
             'phone' => 'required|string',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validation error', 'errors' => $validator->errors()], 422);
         }
 
-        // TODO: Verify prescription link and create session
         $user = User::where('phone', $request->phone)->first();
 
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        $token = $user->createToken('prescription_link_token')->plainTextToken;
+        $tokens = $this->createAuthToken($user);
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful',
-            'data' => [
-                'user' => $this->formatUserData($user),
-                'token' => $token,
-            ]
+            'data' => array_merge(['user' => $this->formatUserData($user)], $tokens),
         ]);
     }
 }

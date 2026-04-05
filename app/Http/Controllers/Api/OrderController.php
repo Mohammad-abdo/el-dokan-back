@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Cart;
 use App\Models\Address;
+use App\Models\UserWalletTransaction;
 use App\Services\FinancialService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -93,16 +94,24 @@ class OrderController extends Controller
 
             // Create order
             $order = Order::create([
-                'order_number' => 'ORD-' . str_pad(Order::count() + 1, 6, '0', STR_PAD_LEFT),
-                'user_id' => $request->user()->id,
-                'shop_id' => $request->shop_id,
-                'status' => 'received',
-                'total_amount' => $totalAmount,
-                'discount_amount' => $discountAmount,
-                'delivery_fee' => $deliveryFee,
-                'delivery_address_id' => $request->delivery_address_id,
-                'payment_method' => $request->payment_method,
-                'payment_status' => $request->payment_method === 'cash_on_delivery' ? 'pending' : 'paid',
+                'order_number'               => 'ORD-' . str_pad(Order::count() + 1, 6, '0', STR_PAD_LEFT),
+                'user_id'                    => $request->user()->id,
+                'shop_id'                    => $request->shop_id,
+                'status'                     => 'received',
+                'total_amount'               => $totalAmount,
+                'discount_amount'            => $discountAmount,
+                'delivery_fee'               => $deliveryFee,
+                'delivery_address_id'        => $request->delivery_address_id,
+                'delivery_address_snapshot'  => [
+                    'street'    => $address->street ?? $address->address_line ?? null,
+                    'city'      => $address->city ?? null,
+                    'state'     => $address->state ?? null,
+                    'country'   => $address->country ?? null,
+                    'latitude'  => $address->latitude ?? null,
+                    'longitude' => $address->longitude ?? null,
+                ],
+                'payment_method'             => $request->payment_method,
+                'payment_status'             => $request->payment_method === 'cash_on_delivery' ? 'pending' : 'paid',
             ]);
 
             // Create order items
@@ -215,7 +224,21 @@ class OrderController extends Controller
 
         // Refund if paid
         if ($order->payment_status === 'paid') {
-            $request->user()->increment('wallet_balance', $order->total_amount);
+            DB::transaction(function () use ($request, $order) {
+                $user = \App\Models\User::lockForUpdate()->find($request->user()->id);
+                $balanceBefore = $user->wallet_balance;
+                $user->increment('wallet_balance', $order->total_amount);
+                UserWalletTransaction::create([
+                    'user_id'        => $user->id,
+                    'type'           => 'credit',
+                    'amount'         => $order->total_amount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after'  => $user->fresh()->wallet_balance,
+                    'description'    => 'Refund for cancelled order #' . $order->order_number,
+                    'reference_type' => Order::class,
+                    'reference_id'   => $order->id,
+                ]);
+            });
         }
 
         return response()->json([

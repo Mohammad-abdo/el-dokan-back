@@ -32,7 +32,8 @@ class PrescriptionController extends Controller
 
         $imagePaths = [];
         foreach ($request->file('images') as $image) {
-            $path = $image->store('prescriptions', 'public');
+            $hashedName = hash('sha256', uniqid('', true) . $image->getClientOriginalName()) . '.' . $image->extension();
+            $path = $image->storeAs('prescriptions', $hashedName, 'public');
             $imagePaths[] = Storage::url($path);
         }
 

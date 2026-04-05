@@ -26,22 +26,31 @@ class User extends Authenticatable
         'role',
         'provider',
         'provider_id',
+        'magic_link_token',
+        'magic_link_expires_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'magic_link_token',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
         'wallet_balance' => 'decimal:2',
+        'magic_link_expires_at' => 'datetime',
     ];
 
     // Relationships
     public function addresses()
     {
         return $this->hasMany(Address::class);
+    }
+
+    public function walletTransactions()
+    {
+        return $this->hasMany(UserWalletTransaction::class);
     }
 
     public function carts()

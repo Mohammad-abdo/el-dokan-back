@@ -20,7 +20,9 @@ class Message extends Model
     ];
 
     protected $casts = [
-        'is_read' => 'boolean',
+        'is_read'   => 'boolean',
+        'content'   => 'encrypted',
+        'voice_url' => 'encrypted',
     ];
 
     public function sender()

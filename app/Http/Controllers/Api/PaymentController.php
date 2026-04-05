@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Coupon;
 use App\Models\CouponUsage;
+use App\Models\UserWalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -38,26 +40,41 @@ class PaymentController extends Controller
         $transactionId = 'TXN-' . strtoupper(Str::random(12));
         
         $payment = Payment::create([
-            'user_id' => $request->user()->id,
-            'order_id' => $request->order_id,
-            'booking_id' => $request->booking_id,
+            'user_id'        => $request->user()->id,
+            'order_id'       => $request->order_id,
+            'booking_id'     => $request->booking_id,
             'payment_method' => $request->payment_method,
-            'amount' => $request->amount,
-            'total_amount' => $request->amount,
-            'status' => $request->payment_method === 'cash_on_delivery' ? 'pending' : 'paid',
+            'amount'         => $request->amount,
+            'total_amount'   => $request->amount,
+            'status'         => $request->payment_method === 'cash_on_delivery' ? 'pending' : 'paid',
             'transaction_id' => $transactionId,
         ]);
 
-        // If e_wallet, deduct from user wallet
+        // If e_wallet, deduct from user wallet inside a transaction with pessimistic lock
         if ($request->payment_method === 'e_wallet') {
-            $user = $request->user();
-            if ($user->wallet_balance < $request->amount) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Insufficient wallet balance'
-                ], 400);
+            try {
+                DB::transaction(function () use ($request, $payment) {
+                    $user = \App\Models\User::lockForUpdate()->find($request->user()->id);
+                    if ($user->wallet_balance < $request->amount) {
+                        $payment->delete();
+                        throw new \Exception('Insufficient wallet balance');
+                    }
+                    $balanceBefore = $user->wallet_balance;
+                    $user->decrement('wallet_balance', $request->amount);
+                    UserWalletTransaction::create([
+                        'user_id'        => $user->id,
+                        'type'           => 'debit',
+                        'amount'         => $request->amount,
+                        'balance_before' => $balanceBefore,
+                        'balance_after'  => $user->fresh()->wallet_balance,
+                        'description'    => 'Payment for order/booking',
+                        'reference_type' => Payment::class,
+                        'reference_id'   => $payment->id,
+                    ]);
+                });
+            } catch (\Exception $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
             }
-            $user->decrement('wallet_balance', $request->amount);
         }
 
         return response()->json([

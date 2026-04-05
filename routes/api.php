@@ -45,7 +45,10 @@ Route::prefix('auth')->middleware('throttle:auth')->group(function () {
     Route::post('/social-login', [AuthController::class, 'socialLogin']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:otp');
     Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:otp');
-    Route::get('/guest-login', [AuthController::class, 'guestLogin']);
+    Route::post('/guest-login', [AuthController::class, 'guestLogin'])->middleware('throttle:10,1');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:otp');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:otp');
+    Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
 });
 
 // Public routes

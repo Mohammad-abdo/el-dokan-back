@@ -41,9 +41,9 @@ class AdminFileUploadController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'file' => 'sometimes|file|mimes:jpeg,jpg,png,gif,webp|max:10240', // 10MB
-            'image' => 'sometimes|file|mimes:jpeg,jpg,png,gif,webp|max:10240', // 10MB
-            'type' => 'nullable|string|max:255',
+            'file'  => 'sometimes|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:5120',
+            'image' => 'sometimes|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:5120',
+            'type'  => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -54,7 +54,8 @@ class AdminFileUploadController extends Controller
             ], 422);
         }
 
-        $path = $file->store('uploads', 'public');
+        $hashedName = hash('sha256', uniqid('', true) . $file->getClientOriginalName()) . '.' . $file->extension();
+        $path = $file->storeAs('uploads', $hashedName, 'public');
         $url = Storage::url($path);
         $fullUrl = str_starts_with($url, 'http') ? $url : (rtrim(config('app.url'), '/') . ($url[0] === '/' ? $url : '/' . $url));
 

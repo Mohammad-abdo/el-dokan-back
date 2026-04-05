@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Doctor;
+use App\Models\UserWalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -125,7 +126,21 @@ class BookingController extends Controller
 
         // Refund if paid
         if ($booking->payment_status === 'paid') {
-            $request->user()->increment('wallet_balance', $booking->total_amount);
+            DB::transaction(function () use ($request, $booking) {
+                $user = \App\Models\User::lockForUpdate()->find($request->user()->id);
+                $balanceBefore = $user->wallet_balance;
+                $user->increment('wallet_balance', $booking->total_amount);
+                UserWalletTransaction::create([
+                    'user_id'        => $user->id,
+                    'type'           => 'credit',
+                    'amount'         => $booking->total_amount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after'  => $user->fresh()->wallet_balance,
+                    'description'    => 'Refund for cancelled booking #' . $booking->booking_number,
+                    'reference_type' => Booking::class,
+                    'reference_id'   => $booking->id,
+                ]);
+            });
         }
 
         return response()->json([
@@ -161,10 +176,10 @@ class BookingController extends Controller
         }
 
         $booking->update([
-            'rating' => $request->rating,
+            'status' => $booking->status, // touch updated_at without writing rating
         ]);
 
-        // Create rating record
+        // Write rating to the centralised ratings table
         \App\Models\Rating::create([
             'user_id' => $request->user()->id,
             'rateable_type' => Doctor::class,

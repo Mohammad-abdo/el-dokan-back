@@ -11,10 +11,17 @@ class ApplicationStatistic extends Model
 
     protected $fillable = [
         'date',
+        'total_users',
+        'active_users',
         'total_orders',
+        'completed_orders',
+        'total_bookings',
+        'completed_bookings',
         'total_revenue',
         'total_commission',
-        'total_withdrawals',
+        'total_products',
+        'total_shops',
+        'total_doctors',
     ];
 
     protected $casts = [

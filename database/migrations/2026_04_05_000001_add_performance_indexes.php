@@ -43,8 +43,8 @@ return new class extends Migration
                 if (!$this->indexExists('products', 'products_category_id_index')) {
                     $table->index('category_id', 'products_category_id_index');
                 }
-                if (!$this->indexExists('products', 'products_status_index')) {
-                    $table->index('status', 'products_status_index');
+                if (!$this->indexExists('products', 'products_is_active_index')) {
+                    $table->index('is_active', 'products_is_active_index');
                 }
                 if (!$this->indexExists('products', 'products_created_at_index')) {
                     $table->index('created_at', 'products_created_at_index');
@@ -82,7 +82,7 @@ return new class extends Migration
         Schema::table('notifications', function (Blueprint $table) {
             if (!DB::getDriverName() === 'sqlite') {
                 if (!$this->indexExists('notifications', 'notifications_user_id_read_index')) {
-                    $table->index(['user_id', 'read_at'], 'notifications_user_id_read_index');
+                    $table->index(['user_id', 'is_read'], 'notifications_user_id_read_index');
                 }
             }
         });
@@ -132,7 +132,7 @@ return new class extends Migration
         Schema::table('products', function (Blueprint $table) {
             $table->dropIndex('products_shop_id_index');
             $table->dropIndex('products_category_id_index');
-            $table->dropIndex('products_status_index');
+            $table->dropIndex('products_is_active_index');
             $table->dropIndex('products_created_at_index');
         });
 
