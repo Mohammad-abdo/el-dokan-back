@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Auth\RegisterRequest;
+use App\Http\Requests\Api\Auth\LoginRequest;
+use App\Http\Requests\Api\Auth\OtpVerifyRequest;
+use App\Http\Requests\Api\Auth\ChangePasswordRequest;
+use App\Http\Requests\Api\Auth\SocialLoginRequest;
 use App\Models\User;
 use App\Models\Doctor;
 use App\Models\Shop;
@@ -82,23 +87,8 @@ class AuthController extends Controller
     /**
      * Register a new user
      */
-    public function register(Request $request): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'username' => 'required|string|unique:users,username',
-            'phone' => 'required|string|unique:users,phone',
-            'email' => 'nullable|email|unique:users,email',
-            'password' => 'nullable|string|min:6',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         $user = User::create([
             'username' => $request->username,
             'phone' => $request->phone,
@@ -108,7 +98,7 @@ class AuthController extends Controller
         ]);
 
         // Generate and send OTP
-        $otp = $this->otpService->generateOtp($request->phone, 'verification');
+        $this->otpService->generateOtp($request->phone, 'verification');
 
         return response()->json([
             'success' => true,
@@ -247,9 +237,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'email' => $request->email,
-                'password' => $request->password,
-                'message' => 'Validation error ',
+                'message' => 'Validation error',
                 'errors' => $validator->errors(),
             ], 422);
         }
@@ -461,21 +449,8 @@ class AuthController extends Controller
     /**
      * Change password
      */
-    public function changePassword(Request $request): JsonResponse
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'current_password' => 'required|string',
-            'new_password' => 'required|string|min:6',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {

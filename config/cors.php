@@ -9,7 +9,7 @@ return [
     |
     | Here you may configure your settings for cross-origin resource sharing
     | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
+    | in web browsers.
     |
     | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
     |
@@ -17,24 +17,38 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
+    'allowed_origins' => array_filter([
+        env('CORS_ALLOWED_ORIGIN', 'http://localhost:5173'),
+        env('CORS_ALLOWED_ORIGIN_FRONTEND', 'http://localhost:3000'),
+        env('CORS_ALLOWED_ORIGIN_DASHBOARD', 'http://localhost:5173'),
+    ]),
+
+    'allowed_origins_patterns' => [
+        '/^https?:\/\/(.*\.)?localhost(:[0-9]+)?$/',
+        '/^https?:\/\/127\.0\.0\.1(:[0-9]+)?$/',
     ],
 
-    'allowed_origins_patterns' => [],
+    'allowed_headers' => [
+        'Accept',
+        'Accept-Language',
+        'Authorization',
+        'Content-Type',
+        'X-Requested-With',
+        'X-Request-ID',
+        'X-CSRF-TOKEN',
+        'X-Timezone',
+    ],
 
-    'allowed_headers' => ['*'],
+    'exposed_headers' => [
+        'X-Request-ID',
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
+    ],
 
-    'exposed_headers' => [],
-
-    'max_age' => 0,
+    'max_age' => 86400,
 
     'supports_credentials' => true,
 

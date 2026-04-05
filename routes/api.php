@@ -36,15 +36,15 @@ Route::get('/', function () {
     ]);
 });
 
-// Public routes
-Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/register-doctor', [AuthController::class, 'registerDoctor']);
-    Route::post('/register-company', [AuthController::class, 'registerCompany']);
+// Public routes with rate limiting
+Route::prefix('auth')->middleware('throttle:auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
+    Route::post('/register-doctor', [AuthController::class, 'registerDoctor'])->middleware('throttle:register');
+    Route::post('/register-company', [AuthController::class, 'registerCompany'])->middleware('throttle:register');
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/social-login', [AuthController::class, 'socialLogin']);
-    Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-    Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:otp');
+    Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:otp');
     Route::get('/guest-login', [AuthController::class, 'guestLogin']);
 });
 
@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('throttle:password-reset');
 
     // User
     Route::prefix('user')->group(function () {
@@ -86,13 +87,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/cart', [CartController::class, 'clear']);
 
     // Orders
-    Route::apiResource('orders', OrderController::class);
+    Route::apiResource('orders', OrderController::class)->middleware('throttle:orders');
     Route::get('/orders/{order}/track', [OrderController::class, 'track']);
     Route::put('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::get('/orders/status/{status}', [OrderController::class, 'index']);
 
     // Prescriptions
-    Route::post('/prescriptions/upload', [PrescriptionController::class, 'upload']);
+    Route::post('/prescriptions/upload', [PrescriptionController::class, 'upload'])->middleware('throttle:uploads');
     Route::get('/prescriptions', [PrescriptionController::class, 'index']);
     Route::get('/prescriptions/{prescription}', [PrescriptionController::class, 'show']);
     Route::get('/prescriptions/status/{status}', [PrescriptionController::class, 'index']);
@@ -156,9 +157,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Coupons
     Route::post('/coupons/validate', [\App\Http\Controllers\Api\CouponController::class, 'validateCoupon']);
-
-    // Change Password
-    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
 
     // Support
     Route::apiResource('support/tickets', \App\Http\Controllers\Support\SupportTicketController::class);

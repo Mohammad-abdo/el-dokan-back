@@ -12,6 +12,8 @@ use App\Models\Visit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
 
 class AdminExportController extends Controller
 {
@@ -31,12 +33,10 @@ class AdminExportController extends Controller
     {
         $arr = $p->toArray();
 
-        // Ensure full URLs for all images.
         if (!empty($arr['images']) && is_array($arr['images'])) {
             $arr['images'] = array_map(fn ($u) => $this->fullImageUrl(is_string($u) ? $u : null), $arr['images']);
         }
 
-        // Append first_image_url explicitly (accessor is not appended by default).
         $arr['first_image_url'] = $p->first_image_url;
 
         return $arr;
@@ -69,7 +69,6 @@ class AdminExportController extends Controller
             ->orderByDesc('visit_time')
             ->get();
 
-        // Normalize products inside order items (including image URLs).
         $normalizedOrders = $orders->map(function (CompanyOrder $order) {
             $arr = $order->toArray();
             $arr['items'] = $order->items->map(function ($item) {
@@ -90,7 +89,6 @@ class AdminExportController extends Controller
             return $arr;
         })->values();
 
-        // Flatten company_order_items table-like data.
         $companyOrderItems = [];
         foreach ($orders as $order) {
             foreach ($order->items as $item) {
@@ -140,7 +138,6 @@ class AdminExportController extends Controller
             $shop = Shop::query()->find($shopId);
         }
 
-        // Fallback: first company shop.
         if (!$shop) {
             $shop = Shop::query()->where('category', 'company')->first();
         }
@@ -171,7 +168,7 @@ class AdminExportController extends Controller
     }
 
     /**
-     * Generate PDF with Puppeteer.
+     * Generate PDF with Puppeteer using Symfony Process (safer than exec).
      *
      * Route: GET /api/admin/export/pdf?shop_id=...
      */
@@ -199,24 +196,39 @@ class AdminExportController extends Controller
 
         $nodeScript = base_path('pdf-service/generateFullDataExportPdf.js');
         if (!file_exists($nodeScript)) {
+            @unlink($inputPath);
             return response()->json(['success' => false, 'message' => 'PDF generator script missing'], 500);
         }
 
-        // Execute node script: node <script> <input.json> <output.pdf>
-        $cmd = 'node ' . escapeshellarg($nodeScript) . ' ' . escapeshellarg($inputPath) . ' ' . escapeshellarg($outputPath);
+        try {
+            $process = Process::fromShellCommandline(
+                'node ' . $nodeScript . ' ' . $inputPath . ' ' . $outputPath
+            );
+            $process->setTimeout(120);
+            $process->run();
 
-        $exitCode = 0;
-        $execOutput = [];
-        @exec($cmd, $execOutput, $exitCode);
+            if (!$process->isSuccessful()) {
+                throw new ProcessFailedException($process);
+            }
+        } catch (ProcessFailedException $e) {
+            Log::error('Puppeteer export failed', [
+                'shop_id' => $shopId,
+                'error' => $e->getMessage(),
+                'output' => $process->getOutput() ?? null,
+            ]);
+            @unlink($inputPath);
+            return response()->json([
+                'success' => false,
+                'message' => 'PDF generation failed. Please try again later.'
+            ], 500);
+        }
 
-        // Basic cleanup input.
         @unlink($inputPath);
 
-        if ($exitCode !== 0 || !file_exists($outputPath)) {
-            Log::error('Puppeteer export failed', [
-                'cmd' => $cmd,
-                'exitCode' => $exitCode,
-                'output' => $execOutput,
+        if (!file_exists($outputPath)) {
+            Log::error('PDF file not created despite successful process', [
+                'shop_id' => $shopId,
+                'output_path' => $outputPath,
             ]);
             return response()->json(['success' => false, 'message' => 'PDF generation failed'], 500);
         }
