@@ -26,8 +26,6 @@ class Product extends Model
         'images',
         'rating',
         'stock_quantity',
-        'category',
-        'subcategory',
         'category_id',
         'subcategory_id',
         'is_active',

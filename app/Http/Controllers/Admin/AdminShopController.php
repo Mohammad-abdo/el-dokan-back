@@ -549,9 +549,9 @@ class AdminShopController extends Controller
      */
     public function ordersFromReps(Request $request, Shop $shop): JsonResponse
     {
-        $query = CompanyOrder::where('customer_type', 'shop')
-            ->where('customer_id', $shop->id)
-            ->with(['representative.user', 'visit', 'items.companyProduct', 'customerShop', 'customerDoctor']);
+        $query = CompanyOrder::where('customerable_type', CompanyOrder::CUSTOMER_TYPE_SHOP)
+            ->where('customerable_id', $shop->id)
+            ->with(['representative.user', 'visit', 'items.companyProduct', 'customerable']);
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

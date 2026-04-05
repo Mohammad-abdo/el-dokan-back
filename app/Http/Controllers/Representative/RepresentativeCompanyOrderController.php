@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanyOrder;
 use App\Models\CompanyOrderItem;
 use App\Models\CompanyProduct;
+use App\Models\Doctor;
+use App\Models\Shop;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +52,16 @@ class RepresentativeCompanyOrderController extends Controller
             }
         }
 
+        if ($data['customer_type'] === CompanyOrder::CUSTOMER_TYPE_SHOP) {
+            if (!Shop::where('id', $data['customer_id'])->exists()) {
+                return response()->json(['success' => false, 'message' => 'Invalid shop customer id'], 422);
+            }
+        } else {
+            if (!Doctor::where('id', $data['customer_id'])->exists()) {
+                return response()->json(['success' => false, 'message' => 'Invalid doctor customer id'], 422);
+            }
+        }
+
         DB::beginTransaction();
         try {
             $total = 0;
@@ -76,8 +88,8 @@ class RepresentativeCompanyOrderController extends Controller
                 'shop_id' => $shop->id,
                 'representative_id' => $rep->id,
                 'visit_id' => $data['visit_id'] ?? null,
-                'customer_type' => $data['customer_type'],
-                'customer_id' => $data['customer_id'],
+                'customerable_type' => $data['customer_type'],
+                'customerable_id' => $data['customer_id'],
                 'total_amount' => $total,
                 'status' => CompanyOrder::STATUS_PENDING,
                 'notes' => $data['notes'] ?? null,
@@ -95,7 +107,7 @@ class RepresentativeCompanyOrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Failed to create order'], 500);
         }
 
-        $order->load(['visit', 'items.companyProduct', 'customerShop', 'customerDoctor']);
+        $order->load(['visit', 'items.companyProduct', 'customerable']);
         return response()->json(['success' => true, 'data' => $order], 201);
     }
 }

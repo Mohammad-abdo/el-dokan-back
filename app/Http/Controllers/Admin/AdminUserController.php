@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserWalletTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 
@@ -116,12 +118,46 @@ class AdminUserController extends Controller
             $data['password'] = Hash::make($data['password']);
         }
 
-        $user->update($data);
+        $newBalance = null;
+        if (array_key_exists('wallet_balance', $data)) {
+            $newBalance = (float) $data['wallet_balance'];
+            unset($data['wallet_balance']);
+        }
+
+        if ($newBalance !== null) {
+            DB::transaction(function () use ($user, $newBalance) {
+                $locked = User::lockForUpdate()->find($user->id);
+                if (!$locked) {
+                    return;
+                }
+                $before = (float) $locked->wallet_balance;
+                if (abs($before - $newBalance) < 0.00001) {
+                    return;
+                }
+                $diff = round($newBalance - $before, 2);
+                $locked->update(['wallet_balance' => $newBalance]);
+                UserWalletTransaction::create([
+                    'user_id'        => $locked->id,
+                    'type'           => $diff >= 0 ? 'credit' : 'debit',
+                    'amount'         => abs($diff),
+                    'balance_before' => $before,
+                    'balance_after'  => $newBalance,
+                    'description'    => 'Admin wallet adjustment',
+                    'reference_type' => null,
+                    'reference_id'   => null,
+                ]);
+            });
+        }
+
+        if (!empty($data)) {
+            $user->refresh();
+            $user->update($data);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'User updated successfully',
-            'data' => $user
+            'data' => $user->fresh()
         ]);
     }
 

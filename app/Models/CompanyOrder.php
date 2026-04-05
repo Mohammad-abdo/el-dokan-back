@@ -25,8 +25,8 @@ class CompanyOrder extends Model
         'shop_id',
         'representative_id',
         'visit_id',
-        'customer_type',
-        'customer_id',
+        'customerable_type',
+        'customerable_id',
         'total_amount',
         'status',
         'notes',
@@ -69,25 +69,36 @@ class CompanyOrder extends Model
         return $this->hasMany(CompanyOrderItem::class);
     }
 
-    /** العميل: متجر أو طبيب */
-    public function customerShop()
+    public function customerable()
     {
-        return $this->belongsTo(Shop::class, 'customer_id');
-    }
-
-    public function customerDoctor()
-    {
-        return $this->belongsTo(Doctor::class, 'customer_id');
+        return $this->morphTo();
     }
 
     public function getCustomerAttribute()
     {
-        if ($this->relationLoaded('customerShop') && $this->customer_type === self::CUSTOMER_TYPE_SHOP) {
-            return $this->customerShop;
+        return $this->relationLoaded('customerable') ? $this->customerable : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(): array
+    {
+        $array = parent::toArray();
+        $array['customer_type'] = $this->customerable_type;
+        $array['customer_id'] = $this->customerable_id;
+        if ($this->relationLoaded('customerable') && $this->customerable !== null) {
+            $nested = $this->customerable->toArray();
+            $array['customerable'] = $nested;
+            if ($this->customerable instanceof Shop) {
+                $array['customer_shop'] = $nested;
+                $array['customerShop'] = $nested;
+            } elseif ($this->customerable instanceof Doctor) {
+                $array['customer_doctor'] = $nested;
+                $array['customerDoctor'] = $nested;
+            }
         }
-        if ($this->relationLoaded('customerDoctor') && $this->customer_type === self::CUSTOMER_TYPE_DOCTOR) {
-            return $this->customerDoctor;
-        }
-        return null;
+
+        return $array;
     }
 }

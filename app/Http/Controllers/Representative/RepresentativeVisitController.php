@@ -49,7 +49,7 @@ class RepresentativeVisitController extends Controller
             'purpose' => 'required|string|max:1000',
             'notes' => 'nullable|string',
             'files' => 'nullable|array',
-            'files.*' => 'file|max:5120', // 5MB
+            'files.*' => 'file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -72,7 +72,9 @@ class RepresentativeVisitController extends Controller
         $filePaths = [];
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $path = $file->store('visits', 'public');
+                $ext = $file->getClientOriginalExtension() ?: $file->extension();
+                $name = hash('sha256', uniqid('', true) . $file->getClientOriginalName()) . '.' . $ext;
+                $path = $file->storeAs('visits', $name, 'public');
                 $filePaths[] = Storage::url($path);
             }
         }

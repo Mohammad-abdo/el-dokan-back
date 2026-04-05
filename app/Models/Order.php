@@ -19,6 +19,7 @@ class Order extends Model
         'discount_amount',
         'delivery_fee',
         'delivery_address_id',
+        'delivery_address_snapshot',
         'payment_method',
         'payment_status',
     ];
@@ -27,6 +28,7 @@ class Order extends Model
         'total_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'delivery_fee' => 'decimal:2',
+        'delivery_address_snapshot' => 'array',
     ];
 
     public function user()
@@ -62,5 +64,10 @@ class Order extends Model
     public function payment()
     {
         return $this->hasOne(Payment::class);
+    }
+
+    public function couponUsages()
+    {
+        return $this->hasMany(CouponUsage::class);
     }
 }

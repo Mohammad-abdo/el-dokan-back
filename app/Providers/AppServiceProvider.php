@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use App\Services\FinancialService;
 use App\Services\DoctorWalletService;
 use App\Services\AuditLogService;
@@ -29,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Relation::morphMap([
+            'shop' => \App\Models\Shop::class,
+            'doctor' => \App\Models\Doctor::class,
+        ]);
+
         $this->configureRateLimiting();
         
         // Register middleware aliases

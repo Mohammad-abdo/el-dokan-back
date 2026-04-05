@@ -16,21 +16,29 @@ class ProductController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Product::where('is_active', true)->with('shop');
+        $query = Product::where('is_active', true)->with(['shop', 'category', 'subcategory']);
 
         // Filter by shop
         if ($request->has('shop_id')) {
             $query->where('shop_id', $request->shop_id);
         }
 
-        // Filter by category
-        if ($request->has('category')) {
-            $query->where('category', $request->category);
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        } elseif ($request->filled('category')) {
+            $c = $request->category;
+            $query->whereHas('category', function ($q) use ($c) {
+                $q->where('name', $c)->orWhere('slug', $c)->orWhere('name_ar', $c)->orWhere('name_en', $c);
+            });
         }
 
-        // Filter by subcategory
-        if ($request->has('subcategory')) {
-            $query->where('subcategory', $request->subcategory);
+        if ($request->filled('subcategory_id')) {
+            $query->where('subcategory_id', $request->subcategory_id);
+        } elseif ($request->filled('subcategory')) {
+            $s = $request->subcategory;
+            $query->whereHas('subcategory', function ($q) use ($s) {
+                $q->where('name', $s)->orWhere('slug', $s)->orWhere('name_ar', $s)->orWhere('name_en', $s);
+            });
         }
 
         // Search
@@ -78,6 +86,8 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'shop_id' => 'nullable|exists:shops,id',
+            'category_id' => 'nullable|exists:categories,id',
+            'subcategory_id' => 'nullable|exists:categories,id',
             'category' => 'nullable|string',
             'subcategory' => 'nullable|string',
             'min_price' => 'nullable|numeric|min:0',
@@ -93,18 +103,28 @@ class ProductController extends Controller
             ], 422);
         }
 
-        $query = Product::where('is_active', true)->with('shop');
+        $query = Product::where('is_active', true)->with(['shop', 'category', 'subcategory']);
 
         if ($request->has('shop_id')) {
             $query->where('shop_id', $request->shop_id);
         }
 
-        if ($request->has('category')) {
-            $query->where('category', $request->category);
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        } elseif ($request->filled('category')) {
+            $c = $request->category;
+            $query->whereHas('category', function ($q) use ($c) {
+                $q->where('name', $c)->orWhere('slug', $c)->orWhere('name_ar', $c)->orWhere('name_en', $c);
+            });
         }
 
-        if ($request->has('subcategory')) {
-            $query->where('subcategory', $request->subcategory);
+        if ($request->filled('subcategory_id')) {
+            $query->where('subcategory_id', $request->subcategory_id);
+        } elseif ($request->filled('subcategory')) {
+            $s = $request->subcategory;
+            $query->whereHas('subcategory', function ($q) use ($s) {
+                $q->where('name', $s)->orWhere('slug', $s)->orWhere('name_ar', $s)->orWhere('name_en', $s);
+            });
         }
 
         if ($request->has('min_price')) {

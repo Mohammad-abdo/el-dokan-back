@@ -357,10 +357,10 @@ class ShopReportService
 
     private function getOrdersFromReps(Shop $shop, Carbon $fromDt, Carbon $toDt): array
     {
-        $orders = CompanyOrder::where('customer_type', CompanyOrder::CUSTOMER_TYPE_SHOP)
-            ->where('customer_id', $shop->id)
+        $orders = CompanyOrder::where('customerable_type', CompanyOrder::CUSTOMER_TYPE_SHOP)
+            ->where('customerable_id', $shop->id)
             ->whereBetween('ordered_at', [$fromDt, $toDt])
-            ->with(['representative.user', 'visit', 'items.companyProduct', 'customerShop', 'customerDoctor'])
+            ->with(['representative.user', 'visit', 'items.companyProduct', 'customerable'])
             ->latest('ordered_at')
             ->get();
 
@@ -432,7 +432,7 @@ class ShopReportService
 
         $orders = CompanyOrder::where('shop_id', $shop->id)
             ->whereBetween('ordered_at', [$fromDt, $toDt])
-            ->with(['representative.user', 'visit', 'items.companyProduct', 'customerShop', 'customerDoctor'])
+            ->with(['representative.user', 'visit', 'items.companyProduct', 'customerable'])
             ->latest('ordered_at')
             ->get();
 

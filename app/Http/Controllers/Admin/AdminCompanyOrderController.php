@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanyOrder;
 use App\Models\CompanyOrderItem;
 use App\Models\CompanyProduct;
+use App\Models\Doctor;
 use App\Models\Shop;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -31,7 +32,7 @@ class AdminCompanyOrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        $query->with(['customerShop', 'customerDoctor']);
+        $query->with(['customerable']);
         $orders = $query->latest()->paginate($request->per_page ?? 20);
 
         return response()->json([
@@ -51,7 +52,7 @@ class AdminCompanyOrderController extends Controller
         if ($company_order->shop_id != $shop->id) {
             return response()->json(['success' => false, 'message' => 'Not found'], 404);
         }
-        $company_order->load(['representative.user', 'visit', 'items.companyProduct', 'customerShop', 'customerDoctor']);
+        $company_order->load(['representative.user', 'visit', 'items.companyProduct', 'customerable']);
         return response()->json(['success' => true, 'data' => $company_order]);
     }
 
@@ -75,6 +76,16 @@ class AdminCompanyOrderController extends Controller
         $rep = $shop->representatives()->find($data['representative_id']);
         if (!$rep) {
             return response()->json(['success' => false, 'message' => 'Representative does not belong to this company'], 422);
+        }
+
+        if ($data['customer_type'] === CompanyOrder::CUSTOMER_TYPE_SHOP) {
+            if (!Shop::where('id', $data['customer_id'])->exists()) {
+                return response()->json(['success' => false, 'message' => 'Invalid shop customer id'], 422);
+            }
+        } else {
+            if (!Doctor::where('id', $data['customer_id'])->exists()) {
+                return response()->json(['success' => false, 'message' => 'Invalid doctor customer id'], 422);
+            }
         }
 
         DB::beginTransaction();
@@ -103,8 +114,8 @@ class AdminCompanyOrderController extends Controller
                 'shop_id' => $shop->id,
                 'representative_id' => $data['representative_id'],
                 'visit_id' => $data['visit_id'] ?? null,
-                'customer_type' => $data['customer_type'],
-                'customer_id' => $data['customer_id'],
+                'customerable_type' => $data['customer_type'],
+                'customerable_id' => $data['customer_id'],
                 'total_amount' => $total,
                 'status' => CompanyOrder::STATUS_PENDING,
                 'notes' => $data['notes'] ?? null,
@@ -122,7 +133,7 @@ class AdminCompanyOrderController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
 
-        $order->load(['representative.user', 'visit', 'items.companyProduct']);
+        $order->load(['representative.user', 'visit', 'items.companyProduct', 'customerable']);
         return response()->json(['success' => true, 'data' => $order], 201);
     }
 }

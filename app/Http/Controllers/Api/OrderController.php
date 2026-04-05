@@ -7,6 +7,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Cart;
 use App\Models\Address;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\UserWalletTransaction;
 use App\Services\FinancialService;
 use Illuminate\Http\Request;
@@ -87,10 +89,67 @@ class OrderController extends Controller
             });
 
             $discountAmount = 0;
-            // TODO: Apply coupon if provided
+            $coupon = null;
+            if ($request->filled('coupon_code')) {
+                $coupon = Coupon::where('code', trim((string) $request->coupon_code))
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$coupon || !$coupon->is_active) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid or expired coupon',
+                    ], 400);
+                }
+
+                $validFrom = $coupon->valid_from;
+                $validUntil = $coupon->valid_until;
+                if ($validFrom && now()->lt($validFrom)) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Coupon is not valid yet'], 400);
+                }
+                if ($validUntil && now()->gt($validUntil)) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Coupon has expired'], 400);
+                }
+
+                $minOrder = (float) ($coupon->minimum_order_amount ?? 0);
+                if ($subtotal < $minOrder) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Minimum order amount not met for this coupon',
+                    ], 400);
+                }
+
+                $userId = $request->user()->id;
+                $perUserLimit = (int) ($coupon->usage_limit_per_user ?? 1);
+                $userUsageCount = CouponUsage::where('coupon_id', $coupon->id)->where('user_id', $userId)->count();
+                if ($userUsageCount >= $perUserLimit) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Coupon usage limit reached for your account',
+                    ], 400);
+                }
+
+                if ($coupon->usage_limit !== null) {
+                    $totalUsages = CouponUsage::where('coupon_id', $coupon->id)->count();
+                    if ($totalUsages >= (int) $coupon->usage_limit) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Coupon is no longer available',
+                        ], 400);
+                    }
+                }
+
+                $discountAmount = $this->computeCouponDiscount($coupon, (float) $subtotal);
+            }
 
             $deliveryFee = 50; // Default delivery fee
-            $totalAmount = $subtotal - $discountAmount + $deliveryFee;
+            $totalAmount = max(0, $subtotal - $discountAmount + $deliveryFee);
 
             // Create order
             $order = Order::create([
@@ -133,6 +192,15 @@ class OrderController extends Controller
 
             // Clear cart
             $request->user()->carts()->delete();
+
+            if ($coupon !== null) {
+                CouponUsage::create([
+                    'coupon_id'       => $coupon->id,
+                    'user_id'         => $request->user()->id,
+                    'order_id'        => $order->id,
+                    'discount_amount' => $discountAmount,
+                ]);
+            }
 
             // Process payment if not cash on delivery
             if ($request->payment_method !== 'cash_on_delivery') {
@@ -246,5 +314,19 @@ class OrderController extends Controller
             'message' => 'Order cancelled successfully',
             'data' => $order
         ]);
+    }
+
+    private function computeCouponDiscount(Coupon $coupon, float $orderAmount): float
+    {
+        if ($coupon->discount_type === 'percentage') {
+            $discount = ($orderAmount * (float) $coupon->discount_value) / 100;
+            if ($coupon->max_discount_amount) {
+                $discount = min($discount, (float) $coupon->max_discount_amount);
+            }
+
+            return round(min($discount, $orderAmount), 2);
+        }
+
+        return round(min((float) $coupon->discount_value, $orderAmount), 2);
     }
 }

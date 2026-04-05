@@ -129,45 +129,79 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        $coupon = Coupon::where('code', $request->coupon_code)
-            ->where('is_active', true)
-            ->where('valid_from', '<=', now())
-            ->where('valid_until', '>=', now())
-            ->first();
+        try {
+            $payload = DB::transaction(function () use ($request) {
+                $coupon = Coupon::where('code', trim((string) $request->coupon_code))
+                    ->lockForUpdate()
+                    ->first();
 
-        if (!$coupon) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid or expired coupon'
-            ], 404);
+                if (!$coupon || !$coupon->is_active) {
+                    return ['error' => 404, 'body' => ['success' => false, 'message' => 'Invalid or expired coupon']];
+                }
+
+                $validFrom = $coupon->valid_from;
+                $validUntil = $coupon->valid_until;
+                if ($validFrom && now()->lt($validFrom)) {
+                    return ['error' => 400, 'body' => ['success' => false, 'message' => 'Coupon is not valid yet']];
+                }
+                if ($validUntil && now()->gt($validUntil)) {
+                    return ['error' => 400, 'body' => ['success' => false, 'message' => 'Coupon has expired']];
+                }
+
+                $minOrder = (float) ($coupon->minimum_order_amount ?? 0);
+                if ((float) $request->order_amount < $minOrder) {
+                    return ['error' => 400, 'body' => ['success' => false, 'message' => 'Minimum order amount not met']];
+                }
+
+                $userId = $request->user()->id;
+                $perUserLimit = (int) ($coupon->usage_limit_per_user ?? 1);
+                $userUsageCount = CouponUsage::where('coupon_id', $coupon->id)->where('user_id', $userId)->count();
+                if ($userUsageCount >= $perUserLimit) {
+                    return ['error' => 400, 'body' => ['success' => false, 'message' => 'Coupon usage limit reached']];
+                }
+
+                if ($coupon->usage_limit !== null) {
+                    $totalUsages = CouponUsage::where('coupon_id', $coupon->id)->count();
+                    if ($totalUsages >= (int) $coupon->usage_limit) {
+                        return ['error' => 400, 'body' => ['success' => false, 'message' => 'Coupon is no longer available']];
+                    }
+                }
+
+                $orderAmount = (float) $request->order_amount;
+                $discount = 0.0;
+                if ($coupon->discount_type === 'percentage') {
+                    $discount = ($orderAmount * (float) $coupon->discount_value) / 100;
+                    if ($coupon->max_discount_amount) {
+                        $discount = min($discount, (float) $coupon->max_discount_amount);
+                    }
+                    $discount = min($discount, $orderAmount);
+                } else {
+                    $discount = min((float) $coupon->discount_value, $orderAmount);
+                }
+
+                return [
+                    'ok' => true,
+                    'coupon' => $coupon,
+                    'discount_amount' => round($discount, 2),
+                    'final_amount' => round($orderAmount - $discount, 2),
+                ];
+            });
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Could not apply coupon'], 500);
         }
 
-        if ($request->order_amount < $coupon->minimum_order_amount) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Minimum order amount not met'
-            ], 400);
-        }
-
-        // Calculate discount
-        $discount = 0;
-        if ($coupon->discount_type === 'percentage') {
-            $discount = ($request->order_amount * $coupon->discount_value) / 100;
-            if ($coupon->max_discount_amount) {
-                $discount = min($discount, $coupon->max_discount_amount);
-            }
-        } else {
-            $discount = min($coupon->discount_value, $request->order_amount);
+        if (isset($payload['error'])) {
+            return response()->json($payload['body'], $payload['error']);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Discount applied successfully',
             'data' => [
-                'coupon' => $coupon,
-                'discount_amount' => $discount,
-                'final_amount' => $request->order_amount - $discount,
-            ]
+                'coupon' => $payload['coupon'],
+                'discount_amount' => $payload['discount_amount'],
+                'final_amount' => $payload['final_amount'],
+            ],
         ]);
     }
 
